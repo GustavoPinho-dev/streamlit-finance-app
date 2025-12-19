@@ -1,0 +1,255 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+from utils import get_selic, get_ipca, get_cdi, calcular_investimento
+
+st.set_page_config(page_title="Finanças", page_icon="💰")
+
+# Widget de upload de dados
+file_upload = st.file_uploader(label="Faça upload dos dados aqui", type=['xlsx'])
+
+# Verifica se foi feito o upload de algum arquivo
+if file_upload:
+  # Leitura dos dados da planilha principal
+  df = pd.read_excel(file_upload)
+  df["Data Inicio"] = pd.to_datetime(df["Data Inicio"], format="%d/%m/%Y").dt.date
+  df["Data Fim"] = pd.to_datetime(df["Data Fim"], format="%d/%m/%Y").dt.date
+
+  # Exibição dos dados no App
+  exp1 = st.expander("Rendimentos")
+  tab_data, tab_stats = exp1.tabs(tabs=["Dados", "Histórico de Rendimento"])
+
+  with tab_data:
+    columns_fmt = {"Rendimento": st.column_config.NumberColumn("Rendimento", format="R$ %f")}
+    st.dataframe(df, hide_index=True, column_config=columns_fmt)
+  
+  with tab_stats:
+    st.line_chart(df, x='Data Fim', y="Rendimento")
+
+  # Leitura da aba de investimentos
+  exp2 = st.expander("Investimentos")
+  tab_data_inv, tab_div_inv = exp2.tabs(tabs=["Investimentos", "Divisão dos Investimentos"])
+  
+  df_inv = pd.read_excel(file_upload, sheet_name="Investimentos")
+  df_inv["Vencimento"] = pd.to_datetime(df_inv["Vencimento"], format="%d/%m/%Y").dt.date
+  
+  # Cria o par Produto x Indicador
+  df_inv['Tipo'] = df_inv.apply(
+    lambda r: f"{r['Produto']} - {r['Indicador']}" if pd.notnull(r['Indicador']) else str(r['Produto']),
+    axis=1
+  ).astype(str)
+
+  total_selic = df_inv.query("Indicador == 'SELIC'")["Valor"].sum()
+
+  with tab_data_inv:
+    invest_columns_fmt = {"Valor": st.column_config.NumberColumn("Valor", format="R$ %f")}
+    st.dataframe(df_inv, hide_index=True, column_config=invest_columns_fmt)
+
+  with tab_div_inv:
+    # Criação do gráfico de divisão dos rendimentos
+    fig = px.pie(
+      df_inv, 
+      names="Tipo", 
+      values="Valor", 
+      title="Distribuição dos Investimentos"
+    )
+
+    # Exibir no Streamlit
+    st.plotly_chart(fig)
+
+  # with st.expander("Calculadora de Investimentos"):
+  #   col1, col2, col3, col4 = st.columns(4)
+
+  #   inv_inicial = col1.number_input("Investimento Inicial")
+  #   aportes_mensais = col2.number_input("Aportes Mensais")
+  #   periodo = col3.number_input("Tempo de aplicação", min_value=0, step=1)
+  #   unidade = col4.selectbox("Período de aplicação", ["meses", "anos"])
+
+  #   # Valores padrão
+  #   selic_gov = get_selic()
+  #   selic_default = selic_gov.loc[0]["MetaSelic"]
+
+  #   ipca_gov = get_ipca()
+  #   ipca_default = float(ipca_gov.iloc[-1]["valor"]) * 12
+
+  #   cdi_gov = get_cdi()
+  #   cdi_default = float(cdi_gov.iloc[-1]["valor"])
+
+  #   # --- LINHA COM 3 COLUNAS PARA SELIC / IPCA / CDI ---
+  #   col_selic, col_ipca, col_cdi = st.columns(3)
+
+  #   selic = col_selic.number_input("Selic (a.a.)", min_value=0., value=selic_default, format="%.2f")
+  #   ipca = col_ipca.number_input("IPCA (a.a.)", min_value=0., value=ipca_default, format="%.2f")
+  #   cdi = col_cdi.number_input("CDI (a.a.)", min_value=0., value=cdi_default, format="%.2f")
+
+  #   col_juro_ipca, col_rent_cdb, col_rent_lci_lca = st.columns(3)
+
+  #   juro_ipca = col_juro_ipca.number_input("Juro real do Tesouro IPCA+ (a.a.)", min_value=0., format="%.2f")
+  #   rent_cdb = col_rent_cdb.number_input("Rentabilidade do CDB", min_value=0., format="%.2f")
+  #   rent_lci_lca = col_rent_lci_lca.number_input("Rentabilidade do LCI/LCA", min_value=0., format="%.2f")
+    
+  #   # Converter período para meses
+  #   if unidade == "anos":
+  #       meses = periodo * 12
+  #   else:
+  #       meses = periodo
+
+  #   # Gerando DataFrames com o resumo de cada índice
+  #   df_selic = calcular_investimento(inv_inicial, aportes_mensais, meses, selic / 100)
+  #   df_ipca  = calcular_investimento(inv_inicial, aportes_mensais, meses, (ipca + juro_ipca) / 100)
+  #   df_cdi   = calcular_investimento(inv_inicial, aportes_mensais, meses, cdi / 100)
+
+  #   # Extraindo APENAS o valor do rendimento líquido de cada DataFrame
+  #   rendimento_selic = df_selic.loc[df_selic["Descrição"] == "Valor final líquido", "Valor"].values[0]
+  #   rendimento_ipca  = df_ipca.loc[df_ipca["Descrição"] == "Valor final líquido", "Valor"].values[0]
+  #   rendimento_cdi   = df_cdi.loc[df_cdi["Descrição"] == "Valor final líquido", "Valor"].values[0]
+
+  #   # Criar DataFrame consolidado para o gráfico
+  #   df_calc = pd.DataFrame({
+  #     "Indice": ["Selic", "IPCA", "CDI"],
+  #     "Valor final Liquido": [
+  #       rendimento_selic,
+  #       rendimento_ipca,
+  #       rendimento_cdi
+  #     ]
+  #   })
+
+  #   # Plot
+  #   fig = px.bar(
+  #     df_calc,
+  #     x="Indice",
+  #     y="Valor final Liquido",
+  #     title="Comparativo de Rendimento Líquido entre Índices",
+  #     labels={"Rendimento Liquido": "Rendimento Líquido (R$)", "Indice": "Índice"},
+  #   )
+
+  #   # Formatar rótulos
+  #   fig.update_traces(texttemplate='R$ %{y:.2f}', textposition='outside')
+
+  #   st.plotly_chart(fig, use_container_width=True)
+
+  #   df_selic["Índice"] = "SELIC"
+  #   df_selic["Valor"] = df_selic["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+
+  #   df_ipca["Índice"] = "IPCA"
+  #   df_ipca["Valor"] = df_ipca["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+
+  #   df_cdi["Índice"] = "CDI"
+  #   df_cdi["Valor"] = df_cdi["Valor"].apply(lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+
+  #   df_final = pd.concat([df_selic, df_ipca, df_cdi], ignore_index=True)
+
+  #   st.divider()
+  #   total_investido = inv_inicial + (aportes_mensais * meses)
+  #   st.markdown(f"Total investido: R$ {total_investido}")
+
+  #   df_selic_pivoted = df_final.pivot(index="Índice", columns="Descrição")
+  #   st.dataframe(df_selic_pivoted)
+
+  exp3 = st.expander("Gastos")
+  with exp3:
+    df_gastos = pd.read_excel(file_upload, sheet_name="Gastos")
+
+    # Converter datas
+    df_gastos["Data"] = pd.to_datetime(df_gastos["Data"])
+    df_gastos["Mês"] = df_gastos["Data"].dt.to_period("M")
+
+    # ================================
+    # FILTRO FIXO (APARECE EM TODAS AS TABS)
+    # ================================
+    col_f1, col_f2 = st.columns(2)
+
+    meses = sorted(df_gastos["Mês"].astype(str).unique())
+    mes_selecionado = col_f1.selectbox(
+        "Selecione o mês",
+        meses,
+        key="mes_gastos_global"
+    )
+
+    tipo_filtro = col_f2.radio(
+        "Filtrar dados por:",
+        ["Mês inteiro", "Até o dia atual"],
+        horizontal=True,
+        key="tipo_filtro_global"
+    )
+
+    # ================================
+    # APLICA FILTRO UMA ÚNICA VEZ
+    # ================================
+    df_filtro = df_gastos[df_gastos["Mês"] == mes_selecionado].copy()
+
+    if tipo_filtro == "Até o dia atual":
+        hoje = pd.Timestamp.today().normalize()
+        df_filtro = df_filtro[df_filtro["Data"] <= hoje]
+
+    # ================================
+    # TABS
+    # ================================
+    tab_gastos_mensais, tab_div_gastos, tab_est_gastos = st.tabs(
+        ["Gastos Mensais", "Divisão de Gastos", "Estimativa de Gastos"]
+    )
+
+  # Converter datas
+  df_gastos["Data"] = pd.to_datetime(df_gastos["Data"])
+  df_gastos["Mês"] = df_gastos["Data"].dt.to_period("M")
+
+  with tab_gastos_mensais:
+    total_receitas = df_filtro[df_filtro["Tipo"] == "Receita"]["Valor"].sum()
+    total_despesas = df_filtro[df_filtro["Tipo"] == "Despesa"]["Valor"].sum()
+    total_investido = df_filtro[df_filtro["Categoria"] == "Investimentos"]["Valor"].sum()
+    saldo = total_receitas - (total_despesas + total_investido)
+
+    col1, col2 = st.columns(2)
+    col3, col4 = st.columns(2)
+    col1.metric("Receitas", f"R$ {total_receitas:,.2f}")
+    col2.metric("Despesas", f"R$ {total_despesas:,.2f}")
+    col3.metric("Saldo", f"R$ {saldo:,.2f}", delta=saldo)
+    col4.metric("Total Investido", f"R$ {total_investido:,.2f}")
+
+  with tab_div_gastos:
+    st.header("📊 Despesas por categoria")
+
+    df_desp = df_filtro[df_filtro["Tipo"] == "Despesa"]
+
+    if not df_desp.empty:
+        fig = px.pie(
+            df_desp,
+            values="Valor",
+            names="Categoria",
+            title="Distribuição das Despesas"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Nenhuma despesa encontrada para o período selecionado.")
+
+    st.dataframe(
+        df_filtro,
+        use_container_width=True,
+        column_config={"Valor": st.column_config.NumberColumn("Valor", format="R$ %f")}
+    )
+
+  with tab_est_gastos:
+    col_renda, col_despesa, col_sobra = st.columns(3)
+
+    renda_mensal = col_renda.number_input(
+        "Renda Mensal",
+        min_value=0.0,
+        format="%.2f"
+    )
+
+    despesa_mensal = col_despesa.number_input(
+        "Despesa Mensal",
+        min_value=0.0,
+        format="%.2f"
+    )
+
+    sobra = renda_mensal - despesa_mensal
+
+    col_sobra.metric(
+        "Valor que sobra",
+        f"R$ {sobra:,.2f}",
+        delta=sobra
+    )
+
+
+
