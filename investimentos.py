@@ -229,27 +229,95 @@ if file_upload:
     )
 
   with tab_est_gastos:
+    st.subheader("📈 Planejamento Financeiro")
+
     col_renda, col_despesa, col_sobra = st.columns(3)
 
     renda_mensal = col_renda.number_input(
         "Renda Mensal",
         min_value=0.0,
+        value=float(total_receitas),
         format="%.2f"
     )
 
     despesa_mensal = col_despesa.number_input(
         "Despesa Mensal",
         min_value=0.0,
+        value=float(total_despesas),
         format="%.2f"
     )
 
-    sobra = renda_mensal - despesa_mensal
+    valor_a_ser_investido = st.number_input(
+        "Valor investido",
+        min_value=0.0,
+        format="%.2f"
+    )
+
+    sobra = renda_mensal - (despesa_mensal + valor_a_ser_investido)
 
     col_sobra.metric(
-        "Valor que sobra",
+        "Valor disponível para planejamento",
         f"R$ {sobra:,.2f}",
         delta=sobra
     )
 
+    st.divider()
 
+    st.markdown("### 🎯 Destinos do dinheiro que sobra")
 
+    if "objetivos" not in st.session_state:
+      st.session_state.objetivos = []
+
+    with st.form("form_objetivos"):
+      col1, col2, col3 = st.columns(3)
+
+      nome = col1.text_input("Objetivo")
+      valor_mensal = col2.number_input("Valor mensal destinado", min_value=0.0)
+      prazo = col3.number_input("Prazo (meses)", min_value=1, step=1)
+
+      adicionar = st.form_submit_button("Adicionar objetivo")
+
+      if adicionar and nome and valor_mensal > 0:
+        st.session_state.objetivos.append({
+          "Objetivo": nome,
+          "Valor mensal": valor_mensal,
+          "Prazo (meses)": prazo,
+          "Total acumulado": valor_mensal * prazo
+        })
+    
+      if st.session_state.objetivos:
+        df_plan = pd.DataFrame(st.session_state.objetivos)
+
+        total_planejado = df_plan["Valor mensal"].sum()
+
+        st.markdown("### 📊 Resumo do planejamento")
+
+        col_a, col_b = st.columns(2)
+        col_a.metric("Total destinado por mês", f"R$ {total_planejado:,.2f}")
+        col_b.metric(
+            "Saldo após planejamento",
+            f"R$ {(sobra - total_planejado):,.2f}",
+            delta=sobra - total_planejado
+        )
+
+        if total_planejado > sobra:
+            st.error("⚠️ O valor planejado é maior que a sobra mensal.")
+        else:
+            st.success("✅ Planejamento dentro do limite da sobra.")
+
+        st.dataframe(
+            df_plan,
+            use_container_width=True,
+            column_config={
+                "Valor mensal": st.column_config.NumberColumn("Valor mensal", format="R$ %f"),
+                "Total acumulado": st.column_config.NumberColumn("Total acumulado", format="R$ %f")
+            }
+        )
+      
+        fig = px.pie(
+            df_plan,
+            values="Valor mensal",
+            names="Objetivo",
+            title="Distribuição da sobra por objetivo"
+        )
+        st.plotly_chart(fig, use_container_width=True)
