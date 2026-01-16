@@ -16,7 +16,12 @@ credentials = service_account.Credentials.from_service_account_info(
 
 @st.cache_resource
 def get_client():
+  try:
     return connect_to_sheets()
+  except Exception as e:
+    st.error("Erro ao conectar ao Google Sheets")
+    st.exception(e)
+    st.stop()
 
 client = get_client()
 
