@@ -98,3 +98,25 @@ def calcular_investimento(valor_inicial, aporte_mensal, meses, taxa_selic_anual)
   })
 
   return df
+
+def format_moeda_to_numeric(df):
+  """
+  Converte colunas monetárias ('Valor' ou 'Rendimento') de string
+  no formato brasileiro para float.
+  """
+
+  colunas_moeda = ["Valor", "Rendimento"]
+
+  for col in colunas_moeda:
+    if col in df.columns:
+      df[col] = (
+        df[col]
+        .astype(str)
+        .str.replace(r"[^\d,.-]", "", regex=True)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+      )
+
+      df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+  return df
