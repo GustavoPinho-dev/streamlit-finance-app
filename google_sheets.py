@@ -1,3 +1,4 @@
+import streamlit as st
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
@@ -5,10 +6,12 @@ from google.oauth2.service_account import Credentials
 # Escopos de leitura
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
-def connect_to_sheets(credentials_file: str):
-    creds = Credentials.from_service_account_file(credentials_file, scopes=SCOPES)
-    client = gspread.authorize(creds)
-    return client
+def connect_to_sheets():
+  creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=SCOPES
+  )
+  return gspread.authorize(creds)
 
 
 def read_sheet_by_name(client, sheet_id: str, worksheet_name: str) -> pd.DataFrame:

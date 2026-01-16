@@ -8,7 +8,7 @@ from utils import format_moeda_to_numeric
 st.set_page_config(page_title="Finanças", page_icon="💰")
 
 SHEET_ID = "1dRWdt00sFQe5WnNMm6C4NZg1X5GBzfi6YH1npO908Uk"
-CREDENTIALS_FILE = "service_account.json"
+#CREDENTIALS_FILE = "service_account.json"
 
 credentials = service_account.Credentials.from_service_account_info(
     st.secrets["gcp_service_account"]
@@ -16,7 +16,7 @@ credentials = service_account.Credentials.from_service_account_info(
 
 @st.cache_resource
 def get_client():
-    return connect_to_sheets(CREDENTIALS_FILE)
+    return connect_to_sheets()
 
 client = get_client()
 
