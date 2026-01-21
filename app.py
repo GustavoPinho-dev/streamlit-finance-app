@@ -141,13 +141,14 @@ if st.session_state["authentication_status"]:
     total_receitas = df_filtro[df_filtro["Tipo"] == "Receita"]["Valor"].sum()
     total_despesas = df_filtro[df_filtro["Tipo"] == "Despesa"]["Valor"].sum()
     total_investido = df_filtro[df_filtro["Categoria"] == "Investimentos"]["Valor"].sum()
-    saldo = total_receitas - (total_despesas + total_investido)
+    saldo_anterior = df_filtro[df_filtro["Tipo"] == "Saldo"]["Valor"].sum()
+    saldo = saldo_anterior + (total_receitas - (total_despesas + total_investido))
 
     col1, col2 = st.columns(2)
     col3, col4 = st.columns(2)
     col1.metric("Receitas", f"R$ {total_receitas:,.2f}")
     col2.metric("Despesas", f"R$ {total_despesas:,.2f}")
-    col3.metric("Saldo", f"R$ {saldo:,.2f}", delta=saldo)
+    col3.metric("Saldo", f"R$ {saldo:,.2f}")
     col4.metric("Total Investido", f"R$ {total_investido:,.2f}")
 
   with tab_div_gastos:
@@ -194,6 +195,7 @@ if st.session_state["authentication_status"]:
     valor_a_ser_investido = st.number_input(
       "Valor investido",
       min_value=0.0,
+      value=float(total_investido),
       format="%.2f"
     )
 
