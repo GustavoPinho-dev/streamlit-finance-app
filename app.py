@@ -105,6 +105,7 @@ if st.session_state["authentication_status"]:
     mes_selecionado = col_f1.selectbox(
       "Selecione o mês",
       meses,
+      index=len(meses) - 1,
       format_func=lambda x: x.strftime("%m/%Y"),
       key="mes_gastos_global"
     )
