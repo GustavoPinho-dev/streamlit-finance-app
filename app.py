@@ -4,10 +4,16 @@ import plotly.express as px
 from data.google_sheets import read_sheet_by_name
 from config.auth import autenticar
 from google.oauth2 import service_account
-from services.utils import format_moeda_to_numeric
+from services.utils import format_moeda_to_numeric, normalize_df_inv
 
-
-st.set_page_config(page_title="Finanças", page_icon="💰")
+# ==============================
+# CONFIGURAÇÃO DA PÁGINA
+# ==============================
+st.set_page_config(
+  page_title="Finanças",
+  page_icon="💰",
+  layout="wide"
+)
 
 SHEET_ID = "1dRWdt00sFQe5WnNMm6C4NZg1X5GBzfi6YH1npO908Uk"
 
@@ -15,6 +21,9 @@ credentials = service_account.Credentials.from_service_account_info(
   st.secrets["gcp_service_account"]
 )
 
+# ==============================
+# CACHE DE DADOS
+# ==============================
 @st.cache_data(show_spinner="Carregando dados financeiros...")
 def carregar_dados(sheet_id):
   return {
@@ -23,254 +32,232 @@ def carregar_dados(sheet_id):
     "gastos": read_sheet_by_name(sheet_id, "Gastos"),
   }
 
-
+# ==============================
+# AUTENTICAÇÃO
+# ==============================
 authenticator = autenticar()
 
 if st.session_state["authentication_status"]:
-  if authenticator.logout():
-    st.cache_data.clear()
-    st.session_state.clear()
-    st.rerun()
-  
-  st.write(f'Bem vindo *{st.session_state["name"]}*')
 
+  # ==============================
+  # CARREGA DADOS
+  # ==============================
   if "dados" not in st.session_state:
     st.session_state["dados"] = carregar_dados(SHEET_ID)
 
-  df = st.session_state["dados"]["rendimentos"]
-  df_inv = st.session_state["dados"]["investimentos"]
-  df_gastos = st.session_state["dados"]["gastos"]
+  df = format_moeda_to_numeric(st.session_state["dados"]["rendimentos"])
+  df_inv = format_moeda_to_numeric(st.session_state["dados"]["investimentos"])
+  df_gastos = format_moeda_to_numeric(st.session_state["dados"]["gastos"])
 
-  df = format_moeda_to_numeric(df)
-  df_inv = format_moeda_to_numeric(df_inv)
-  df_gastos = format_moeda_to_numeric(df_gastos)
+  # ==============================
+  # MENU LATERAL
+  # ==============================
+  with st.sidebar:
+    if authenticator.logout():
+      st.cache_data.clear()
+      st.session_state.clear()
+      st.rerun()
 
-  df["Data Inicio"] = pd.to_datetime(df["Data Inicio"], dayfirst=True).dt.date
-  df["Data Fim"] = pd.to_datetime(df["Data Fim"], dayfirst=True).dt.date
+    st.divider()
+    st.caption(f"👤 Olá, {st.session_state['name']}")
 
-  # Exibição dos dados no App
-  exp1 = st.expander("Rendimentos")
-  tab_data, tab_stats = exp1.tabs(tabs=["Dados", "Histórico de Rendimento"])
+    st.title("💰 Finanças")
 
-  with tab_data:
-    columns_fmt = {"Rendimento": st.column_config.NumberColumn("Rendimento", format="R$ %f")}
-    st.dataframe(df, hide_index=True, column_config=columns_fmt)
-
-  with tab_stats:
-    st.line_chart(df, x='Data Fim', y="Rendimento")
-
-  # Leitura da aba de investimentos
-  exp2 = st.expander("Investimentos")
-  tab_data_inv, tab_div_inv = exp2.tabs(tabs=["Investimentos", "Divisão dos Investimentos"])
-
-  df_inv["Vencimento"] = pd.to_datetime(df_inv["Vencimento"], dayfirst=True).dt.date
-
-  # Cria o par Produto x Indicador
-  df_inv['Tipo'] = df_inv.apply(
-    lambda r: f"{r['Produto']} - {r['Indicador']}" if pd.notnull(r['Indicador']) else str(r['Produto']),
-    axis=1
-  ).astype(str)
-
-  total_selic = df_inv.query("Indicador == 'SELIC'")["Valor"].sum()
-
-  with tab_data_inv:
-    invest_columns_fmt = {"Valor": st.column_config.NumberColumn("Valor", format="R$ %f")}
-    st.dataframe(df_inv, hide_index=True, column_config=invest_columns_fmt)
-
-  with tab_div_inv:
-    # Criação do gráfico de divisão dos rendimentos
-    fig = px.pie(
-      df_inv, 
-      names="Tipo", 
-      values="Valor", 
-      title="Distribuição dos Investimentos"
+    pagina = st.radio(
+      "Navegação",
+      [
+        "📈 Rendimentos",
+        "🏦 Investimentos",
+        "💸 Gastos",
+      ]
     )
 
-    # Exibir no Streamlit
-    st.plotly_chart(fig)
+  # ==============================
+  # 📈 RENDIMENTOS
+  # ==============================
+  if pagina == "📈 Rendimentos":
+    st.header("📈 Rendimentos")
 
-  exp3 = st.expander("Gastos")
-  with exp3:
+    df["Data Inicio"] = pd.to_datetime(df["Data Inicio"], dayfirst=True).dt.date
+    df["Data Fim"] = pd.to_datetime(df["Data Fim"], dayfirst=True).dt.date
 
-    # Converter datas
+    tab_dados, tab_hist = st.tabs(["Dados", "Histórico"])
+
+    with tab_dados:
+      st.dataframe(
+        df,
+        hide_index=True,
+        column_config={
+          "Rendimento": st.column_config.NumberColumn("Rendimento", format="R$ %f")
+        }
+      )
+
+    with tab_hist:
+      st.line_chart(df, x="Data Fim", y="Rendimento")
+
+  # ==============================
+  # 🏦 INVESTIMENTOS
+  # ==============================
+  elif pagina == "🏦 Investimentos":
+    st.header("🏦 Investimentos")
+
+    df_inv = normalize_df_inv(df_inv)
+
+    tab_lista, tab_div = st.tabs(["Lista", "Distribuição"])
+
+    with tab_lista:
+      st.dataframe(
+        df_inv,
+        hide_index=True,
+        column_config={
+          "Valor": st.column_config.NumberColumn("Valor", format="R$ %f")
+        }
+      )
+
+    with tab_div:
+      fig = px.pie(
+        df_inv,
+        names="Tipo",
+        values="Valor",
+        title="Distribuição dos Investimentos"
+      )
+      st.plotly_chart(fig, use_container_width=True)
+
+  # ==============================
+  # 💸 GASTOS
+  # ==============================
+  elif pagina == "💸 Gastos":
+    st.header("💸 Gastos")
+
+    # Datas
     df_gastos["Data"] = pd.to_datetime(df_gastos["Data"], dayfirst=True)
     df_gastos["Mês"] = df_gastos["Data"].dt.to_period("M")
 
-    # ================================
-    # FILTRO FIXO (APARECE EM TODAS AS TABS)
-    # ================================
-    col_f1, col_f2 = st.columns(2)
+    # ------------------------------
+    # FILTROS NO SIDEBAR
+    # ------------------------------
+    with st.sidebar:
+      st.subheader("Filtros")
 
-    meses = sorted(df_gastos["Mês"].unique())
-    mes_selecionado = col_f1.selectbox(
-      "Selecione o mês",
-      meses,
-      index=len(meses) - 1,
-      format_func=lambda x: x.strftime("%m/%Y"),
-      key="mes_gastos_global"
-    )
+      meses = sorted(df_gastos["Mês"].unique())
 
-    tipo_filtro = col_f2.radio(
-      "Filtrar dados por:",
-      ["Mês inteiro", "Até o dia atual"],
-      horizontal=True,
-      key="tipo_filtro_global"
-    )
-
-    # ================================
-    # APLICA FILTRO UMA ÚNICA VEZ
-    # ================================
-    df_filtro = df_gastos[df_gastos["Mês"] == mes_selecionado].copy()
-
-    if tipo_filtro == "Até o dia atual":
-      hoje = pd.Timestamp.today().normalize()
-      df_filtro = df_filtro[df_filtro["Data"] <= hoje]
-
-    # ================================
-    # TABS
-    # ================================
-    tab_gastos_mensais, tab_div_gastos, tab_est_gastos = st.tabs(
-      ["Gastos Mensais", "Divisão de Gastos", "Estimativa de Gastos"]
-    )
-
-  # Converter datas
-  df_gastos["Data"] = pd.to_datetime(df_gastos["Data"], dayfirst=True)
-  df_gastos["Mês"] = df_gastos["Data"].dt.to_period("M")
-
-
-  with tab_gastos_mensais:
-    total_receitas = df_filtro[df_filtro["Tipo"] == "Receita"]["Valor"].sum()
-    total_despesas = df_filtro[df_filtro["Tipo"] == "Despesa"]["Valor"].sum()
-    total_investido = df_filtro[df_filtro["Categoria"] == "Investimentos"]["Valor"].sum()
-    saldo_anterior = df_filtro[df_filtro["Tipo"] == "Saldo"]["Valor"].sum()
-    saldo = saldo_anterior + (total_receitas - (total_despesas + total_investido))
-
-    col1, col2 = st.columns(2)
-    col3, col4 = st.columns(2)
-    col1.metric("Receitas", f"R$ {total_receitas:,.2f}")
-    col2.metric("Despesas", f"R$ {total_despesas:,.2f}")
-    col3.metric("Saldo", f"R$ {saldo:,.2f}")
-    col4.metric("Total Investido", f"R$ {total_investido:,.2f}")
-
-  with tab_div_gastos:
-    st.header("📊 Despesas por categoria")
-
-    df_desp = df_filtro[df_filtro["Tipo"] == "Despesa"]
-
-    if not df_desp.empty:
-      fig = px.pie(
-        df_desp,
-        values="Valor",
-        names="Categoria",
-        title="Distribuição das Despesas"
+      mes_selecionado = st.selectbox(
+        "Mês",
+        meses,
+        index=len(meses) - 1,
+        format_func=lambda x: x.strftime("%m/%Y"),
+        key="mes_gastos_global"
       )
-      st.plotly_chart(fig, use_container_width=True)
-    else:
-      st.info("Nenhuma despesa encontrada para o período selecionado.")
 
-    st.dataframe(
-      df_filtro,
-      use_container_width=True,
-      column_config={"Valor": st.column_config.NumberColumn("Valor", format="R$ %f")}
-    )
+      tipo_filtro = st.radio(
+        "Período",
+        ["Mês inteiro", "Até o dia atual"],
+        key="tipo_filtro_global"
+      )
 
-  with tab_est_gastos:
-    st.subheader("📈 Planejamento Financeiro")
+      # Aplica filtros
+      df_filtro = df_gastos[df_gastos["Mês"] == mes_selecionado].copy()
 
-    col_renda, col_despesa, col_sobra = st.columns(3)
+      if tipo_filtro == "Até o dia atual":
+        hoje = pd.Timestamp.today().normalize()
+        df_filtro = df_filtro[df_filtro["Data"] <= hoje]
 
-    renda_mensal = col_renda.number_input(
-      "Renda Mensal",
-      min_value=0.0,
-      value=float(total_receitas),
-      format="%.2f"
-    )
+      # ------------------------------
+      # TABS
+      # ------------------------------
+      tab_resumo, tab_div, tab_plan = st.tabs(
+        ["Resumo Mensal", "Divisão", "Planejamento"]
+      )
 
-    despesa_mensal = col_despesa.number_input(
-      "Despesa Mensal",
-      min_value=0.0,
-      value=float(total_despesas),
-      format="%.2f"
-    )
+      # 🔹 RESUMO MENSAL
+      with tab_resumo:
+        total_receitas = df_filtro[df_filtro["Tipo"] == "Receita"]["Valor"].sum()
+        total_despesas = df_filtro[df_filtro["Tipo"] == "Despesa"]["Valor"].sum()
+        total_investido = df_filtro[df_filtro["Categoria"] == "Investimentos"]["Valor"].sum()
+        saldo_anterior = df_filtro[df_filtro["Tipo"] == "Saldo"]["Valor"].sum()
 
-    valor_a_ser_investido = st.number_input(
-      "Valor investido",
-      min_value=0.0,
-      value=float(total_investido),
-      format="%.2f"
-    )
+        saldo = saldo_anterior + (total_receitas - (total_despesas + total_investido))
 
-    sobra = renda_mensal - (despesa_mensal + valor_a_ser_investido)
+        col1, col2 = st.columns(2)
+        col3, col4 = st.columns(2)
 
-    col_sobra.metric(
-      "Valor disponível para planejamento",
-      f"R$ {sobra:,.2f}",
-      delta=sobra
-    )
+        col1.metric("Receitas", f"R$ {total_receitas:,.2f}")
+        col2.metric("Despesas", f"R$ {total_despesas:,.2f}")
+        col3.metric("Saldo", f"R$ {saldo:,.2f}")
+        col4.metric("Total Investido", f"R$ {total_investido:,.2f}")
 
-    st.divider()
+      # 🔹 DIVISÃO DE GASTOS
+      with tab_div:
+        df_desp = df_filtro[df_filtro["Tipo"] == "Despesa"]
 
-    st.markdown("### 🎯 Destinos do dinheiro que sobra")
-
-    if "objetivos" not in st.session_state:
-      st.session_state.objetivos = []
-
-    with st.form("form_objetivos"):
-      col1, col2, col3 = st.columns(3)
-
-      nome = col1.text_input("Objetivo")
-      valor_mensal = col2.number_input("Valor mensal destinado", min_value=0.0)
-      prazo = col3.number_input("Prazo (meses)", min_value=1, step=1)
-
-      adicionar = st.form_submit_button("Adicionar objetivo")
-
-      if adicionar and nome and valor_mensal > 0:
-        st.session_state.objetivos.append({
-          "Objetivo": nome,
-          "Valor mensal": valor_mensal,
-          "Prazo (meses)": prazo,
-          "Total acumulado": valor_mensal * prazo
-        })
-    
-      if st.session_state.objetivos:
-        df_plan = pd.DataFrame(st.session_state.objetivos)
-
-        total_planejado = df_plan["Valor mensal"].sum()
-
-        st.markdown("### 📊 Resumo do planejamento")
-
-        col_a, col_b = st.columns(2)
-        col_a.metric("Total destinado por mês", f"R$ {total_planejado:,.2f}")
-        col_b.metric(
-          "Saldo após planejamento",
-          f"R$ {(sobra - total_planejado):,.2f}",
-          delta=sobra - total_planejado
-        )
-
-        if total_planejado > sobra:
-          st.error("⚠️ O valor planejado é maior que a sobra mensal.")
+        if not df_desp.empty:
+          fig = px.pie(
+            df_desp,
+            values="Valor",
+            names="Categoria",
+            title="Distribuição das Despesas"
+          )
+          st.plotly_chart(fig, use_container_width=True)
         else:
-          st.success("✅ Planejamento dentro do limite da sobra.")
+          st.info("Nenhuma despesa encontrada para o período selecionado.")
 
         st.dataframe(
+          df_filtro,
+          use_container_width=True,
+          column_config={
+            "Valor": st.column_config.NumberColumn("Valor", format="R$ %f")
+          }
+        )
+
+      # 🔹 PLANEJAMENTO
+      with tab_plan:
+        renda = st.number_input("Renda Mensal", value=float(total_receitas))
+        despesa = st.number_input("Despesa Mensal", value=float(total_despesas))
+        invest = st.number_input("Valor Investido", value=float(total_investido))
+
+        sobra = renda - (despesa + invest)
+        st.metric("Valor disponível", f"R$ {sobra:,.2f}")
+
+        if "objetivos" not in st.session_state:
+          st.session_state.objetivos = []
+
+        with st.form("objetivos"):
+          nome = st.text_input("Objetivo")
+          valor = st.number_input("Valor mensal", min_value=0.0)
+          prazo = st.number_input("Prazo (meses)", min_value=1, step=1)
+
+          if st.form_submit_button("Adicionar") and nome:
+            st.session_state.objetivos.append({
+              "Objetivo": nome,
+              "Valor mensal": valor,
+              "Prazo": prazo,
+              "Total": valor * prazo
+            })
+
+        if st.session_state.objetivos:
+          df_plan = pd.DataFrame(st.session_state.objetivos)
+
+          st.dataframe(
             df_plan,
             use_container_width=True,
             column_config={
-              "Valor mensal": st.column_config.NumberColumn("Valor mensal", format="R$ %f"),
-              "Total acumulado": st.column_config.NumberColumn("Total acumulado", format="R$ %f")
+              "Valor mensal": st.column_config.NumberColumn(format="R$ %f"),
+              "Total": st.column_config.NumberColumn(format="R$ %f")
             }
-        )
-      
-        fig = px.pie(
-          df_plan,
-          values="Valor mensal",
-          names="Objetivo",
-          title="Distribuição da sobra por objetivo"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-      
+          )
 
+          fig = px.pie(
+            df_plan,
+            values="Valor mensal",
+            names="Objetivo",
+            title="Distribuição da sobra"
+          )
+          st.plotly_chart(fig, use_container_width=True)
+
+# ==============================
+# ERROS DE LOGIN
+# ==============================
 elif st.session_state["authentication_status"] is False:
-  st.error('Usuário/Senha é inválido')
+  st.error("Usuário ou senha inválidos.")
 elif st.session_state["authentication_status"] is None:
-  st.error('Por favor, utilize seu usuário e senha!')
+  st.info("Informe usuário e senha para continuar.")
