@@ -88,7 +88,9 @@ if st.session_state["authentication_status"]:
         df,
         hide_index=True,
         column_config={
-          "Rendimento": st.column_config.NumberColumn("Rendimento", format="R$ %f")
+          "Rendimento": st.column_config.NumberColumn("Rendimento", format="R$ %f"),
+          "Data Inicio": st.column_config.DateColumn("Data Início", format="DD/MM/YYYY"),
+          "Data Fim": st.column_config.DateColumn("Data Fim", format="DD/MM/YYYY")
         }
       )
 
@@ -110,7 +112,8 @@ if st.session_state["authentication_status"]:
         df_inv,
         hide_index=True,
         column_config={
-          "Valor": st.column_config.NumberColumn("Valor", format="R$ %f")
+          "Valor": st.column_config.NumberColumn("Valor", format="R$ %f"),
+          "Vencimento": st.column_config.DateColumn("Vencimento", format="DD/MM/YYYY")
         }
       )
 
@@ -202,10 +205,12 @@ if st.session_state["authentication_status"]:
         st.info("Nenhuma despesa encontrada para o período selecionado.")
 
       st.dataframe(
-        df_filtro,
+        df_desp,
         use_container_width=True,
+        hide_index=True,
         column_config={
-          "Valor": st.column_config.NumberColumn("Valor", format="R$ %f")
+          "Valor": st.column_config.NumberColumn("Valor", format="R$ %f"),
+          "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY")
         }
       )
 
@@ -224,17 +229,19 @@ if st.session_state["authentication_status"]:
       if "objetivos" not in st.session_state:
         st.session_state.objetivos = []
 
-      with st.form("objetivos"):
+      with st.form("form_objetivos"):
         nome = st.text_input("Objetivo")
         valor = st.number_input("Valor mensal", min_value=0.0)
         prazo = st.number_input("Prazo (meses)", min_value=1, step=1)
 
-        if st.form_submit_button("Adicionar") and nome:
-          st.session_state.objetivos.append({
-            "Objetivo": nome,
-            "Valor mensal": valor,
-            "Prazo": prazo,
-            "Total": valor * prazo
+        submitted = st.form_submit_button("Adicionar")
+
+        if submitted and nome:
+          st.session_state["objetivos"].append({
+              "Objetivo": nome,
+              "Valor mensal": valor,
+              "Prazo": prazo,
+              "Total": valor * prazo
           })
 
       if st.session_state.objetivos:
@@ -243,6 +250,7 @@ if st.session_state["authentication_status"]:
         st.dataframe(
           df_plan,
           use_container_width=True,
+          hide_index=True,
           column_config={
             "Valor mensal": st.column_config.NumberColumn(format="R$ %f"),
             "Total": st.column_config.NumberColumn(format="R$ %f")
