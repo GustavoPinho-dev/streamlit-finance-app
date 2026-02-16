@@ -4,7 +4,8 @@ import plotly.express as px
 from data.google_sheets import read_sheet_by_name
 from config.auth import autenticar
 from google.oauth2 import service_account
-from services.utils import format_moeda_to_numeric, normalize_df_inv
+from services.utils import normalize_df_inv
+from etl.transform import FinanceDataPipeline
 
 # ==============================
 # CONFIGURAÇÃO DA PÁGINA
@@ -15,7 +16,7 @@ st.set_page_config(
   layout="wide"
 )
 
-SHEET_ID = "1dRWdt00sFQe5WnNMm6C4NZg1X5GBzfi6YH1npO908Uk"
+SHEET_ID = st.secrets["SHEET_ID"]
 
 credentials = service_account.Credentials.from_service_account_info(
   st.secrets["gcp_service_account"]
@@ -43,11 +44,13 @@ if st.session_state["authentication_status"]:
   # CARREGA DADOS
   # ==============================
   if "dados" not in st.session_state:
-    st.session_state["dados"] = carregar_dados(SHEET_ID)
+    pipeline = FinanceDataPipeline(SHEET_ID)
 
-  df = format_moeda_to_numeric(st.session_state["dados"]["rendimentos"])
-  df_inv = format_moeda_to_numeric(st.session_state["dados"]["investimentos"])
-  df_gastos = format_moeda_to_numeric(st.session_state["dados"]["gastos"])
+    st.session_state["dados"] = pipeline.run()
+
+  df = st.session_state["dados"]["rendimentos"]
+  df_inv = st.session_state["dados"]["investimentos"]
+  df_gastos = st.session_state["dados"]["gastos"]
 
   # ==============================
   # MENU LATERAL
@@ -77,9 +80,6 @@ if st.session_state["authentication_status"]:
   # ==============================
   if pagina == "📈 Rendimentos":
     st.header("📈 Rendimentos")
-
-    df["Data Inicio"] = pd.to_datetime(df["Data Inicio"], dayfirst=True).dt.date
-    df["Data Fim"] = pd.to_datetime(df["Data Fim"], dayfirst=True).dt.date
 
     tab_dados, tab_hist = st.tabs(["Dados", "Histórico"])
 
@@ -132,9 +132,8 @@ if st.session_state["authentication_status"]:
   elif pagina == "💸 Gastos":
     st.header("💸 Gastos")
 
-    # Datas
-    df_gastos["Data"] = pd.to_datetime(df_gastos["Data"], dayfirst=True)
-    df_gastos["Mês"] = df_gastos["Data"].dt.to_period("M")
+    # Instituições
+    instituicoes = pd.unique(df_gastos["Instituição"])
 
     # ------------------------------
     # FILTROS NO SIDEBAR
@@ -174,24 +173,36 @@ if st.session_state["authentication_status"]:
 
     # 🔹 RESUMO MENSAL
     with tab_resumo:
-      total_receitas = df_filtro[df_filtro["Tipo"] == "Receita"]["Valor"].sum()
-      total_despesas = df_filtro[df_filtro["Tipo"] == "Despesa"]["Valor"].sum()
-      total_investido = df_filtro[df_filtro["Categoria"] == "Investimentos"]["Valor"].sum()
-      saldo_anterior = df_filtro[df_filtro["Tipo"] == "Saldo"]["Valor"].sum()
+      
 
-      saldo = saldo_anterior + (total_receitas - (total_despesas + total_investido))
+      for i in instituicoes:
+        df_instituicao = df_filtro[df_filtro["Instituição"] == i]
+        with st.container(border=True):
+          st.image(f"images/{i}_logo.png", width=70)
 
-      col1, col2 = st.columns(2)
-      col3, col4 = st.columns(2)
+          total_receitas = df_instituicao[df_instituicao["Tipo"] == "Receita"]["Valor"].sum()
+          total_despesas = df_instituicao[df_instituicao["Tipo"] == "Despesa"]["Valor"].sum()
+          total_investido = df_instituicao[df_instituicao["Categoria"] == "Investimentos"]["Valor"].sum()
+          saldo_anterior = df_instituicao[df_instituicao["Tipo"] == "Saldo"]["Valor"].sum()
 
-      col1.metric("Receitas", f"R$ {total_receitas:,.2f}")
-      col2.metric("Despesas", f"R$ {total_despesas:,.2f}")
-      col3.metric("Saldo", f"R$ {saldo:,.2f}")
-      col4.metric("Total Investido", f"R$ {total_investido:,.2f}")
+          saldo = saldo_anterior + (total_receitas - (total_despesas + total_investido))
+
+          col1, col2 = st.columns(2)
+          col3, col4 = st.columns(2)
+
+          col1.metric("Receitas", f"R$ {total_receitas:,.2f}")
+          col2.metric("Despesas", f"R$ {total_despesas:,.2f}")
+          col3.metric("Saldo", f"R$ {saldo:,.2f}")
+          col4.metric("Total Investido", f"R$ {total_investido:,.2f}")
 
     # 🔹 DIVISÃO DE GASTOS
     with tab_div:
-      df_desp = df_filtro[df_filtro["Tipo"] == "Despesa"]
+      inst_selected = st.selectbox(
+        "Instituição",
+        instituicoes,
+      )
+
+      df_desp = df_filtro[(df_filtro["Tipo"] == "Despesa") & (df_filtro["Instituição"] == inst_selected)]
 
       if not df_desp.empty:
         fig = px.pie(
