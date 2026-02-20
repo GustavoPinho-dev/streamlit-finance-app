@@ -1,6 +1,7 @@
-from typing import Final
 import streamlit as st
-from data.google_sheets import save_data_sheets
+from datetime import datetime
+from typing import Final
+from data.google_sheets import save_data_sheets  # Certifique-se que o caminho está correto
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application, 
@@ -11,7 +12,7 @@ from telegram.ext import (
     ConversationHandler
 )
 
-# Configurações extraídas do Streamlit
+# --- CONFIGURAÇÕES ---
 TOKEN: Final = st.secrets['bot_token']
 SHEET_ID = st.secrets["SHEET_ID"] 
 
@@ -19,8 +20,8 @@ SHEET_ID = st.secrets["SHEET_ID"]
 (TIPO, VALOR, CATEGORIA, INSTITUICAO, DESCRICAO, 
  PRODUTO, TIPO_INVEST, VENCIMENTO, INDICADOR) = range(9)
 
+# --- INÍCIO ---
 async def start_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # Opções atualizadas conforme solicitado
     reply_keyboard = [['Gastos', 'Investimentos', 'Receita', 'Rendimentos']]
     await update.message.reply_text(
         '💰 **Novo Registro Financeiro**\nO que vamos lançar agora?',
@@ -42,9 +43,9 @@ async def get_valor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['valor'] = update.message.text 
     tipo = context.user_data['tipo']
 
-    # Ajuste na lógica de roteamento para o plural
     if tipo == 'Receita':
-        return await finalizar_registro(update, context)
+        await update.message.reply_text('Qual a **descrição** da receita? (Ex: Salário, Freelance)', parse_mode='Markdown')
+        return DESCRICAO
     elif tipo == 'Investimentos':
         await update.message.reply_text('Qual o **produto**? (Ex: CDB, Tesouro)', parse_mode='Markdown')
         return PRODUTO
@@ -52,13 +53,13 @@ async def get_valor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text('Qual a **categoria**? (Ex: Consumo, Fixo, Variável)', parse_mode='Markdown')
         return CATEGORIA
 
-# --- FLUXO A: GASTOS / RENDIMENTOS ---
+# --- FLUXO GASTOS / RENDIMENTOS ---
 async def get_categoria(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['categoria'] = update.message.text
     await update.message.reply_text('Qual a **instituição**? (Ex: BTG, Itaú, Caixa)', parse_mode='Markdown')
     return INSTITUICAO
 
-# --- FLUXO B: INVESTIMENTOS ---
+# --- FLUXO INVESTIMENTOS ---
 async def get_produto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_keyboard = [['Aplicação', 'Retirada']]
     context.user_data['produto'] = update.message.text
@@ -71,52 +72,70 @@ async def get_produto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def get_tipo_invest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['tipo_invest'] = update.message.text
-    await update.message.reply_text('Qual o **vencimento**?', parse_mode='Markdown')
+    await update.message.reply_text('Qual o **vencimento**? (Ex: 12/12/2026 ou N/A)', parse_mode='Markdown')
     return VENCIMENTO
 
 async def get_vencimento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['vencimento'] = update.message.text
-    await update.message.reply_text('Qual o **indicador/taxa**?', parse_mode='Markdown')
+    await update.message.reply_text('Qual o **indicador/taxa**? (Ex: 100% CDI)', parse_mode='Markdown')
     return INDICADOR
 
 async def get_indicador(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['indicador'] = update.message.text
-    await update.message.reply_text('Qual a **instituição** onde o investimento foi feito?', parse_mode='Markdown')
+    await update.message.reply_text('Qual a **instituição** do investimento?', parse_mode='Markdown')
     return INSTITUICAO
 
-# --- CONVERGÊNCIA: INSTITUIÇÃO ---
+# --- LOGICA COMPARTILHADA: INSTITUIÇÃO E DESCRIÇÃO ---
 async def get_instituicao(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['instituicao'] = update.message.text 
     tipo = context.user_data['tipo']
 
-    # Ajuste na verificação para o plural
-    if tipo == 'Investimentos':
+    # Se for Investimento ou Receita, encerra aqui pois já coletamos tudo
+    if tipo in ['Investimentos', 'Receita']:
         return await finalizar_registro(update, context)
     
+    # Para Gastos/Rendimentos, ainda pede a descrição
     await update.message.reply_text('Para finalizar, qual a **descrição**?', parse_mode='Markdown')
     return DESCRICAO
 
 async def get_descricao(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['descricao'] = update.message.text
+    tipo = context.user_data['tipo']
+
+    # Se for Receita, a descrição veio antes da Instituição
+    if tipo == 'Receita':
+        await update.message.reply_text('Qual a **instituição** da receita?', parse_mode='Markdown')
+        return INSTITUICAO
+    
+    # Para os outros, a descrição é o fim da linha
     return await finalizar_registro(update, context)
 
-# --- CARGA (LOAD) ---
+# --- FINALIZAÇÃO E SALVAMENTO ---
 async def finalizar_registro(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     dados = context.user_data
     tipo = dados['tipo']
     
-    resumo = f"✅ **{tipo} registrado!**\n💰 Valor: R$ {dados['valor']}\n🏦 Instituição: {dados.get('instituicao', 'N/A')}\n"
+    # Montagem do resumo visual para o usuário
+    resumo = f"✅ **{tipo} registrado!**\n💰 Valor: R$ {dados['valor']}\n🏦 Instituição: {dados.get('instituicao', '')}\n"
     
     if tipo == 'Investimentos':
         resumo += (f"📦 Produto: {dados.get('produto')}\n🏷️ Tipo: {dados.get('tipo_invest')}\n"
                    f"📅 Vencimento: {dados.get('vencimento')}\n📈 Taxa: {dados.get('indicador')}")
-    elif tipo != 'Receita':
+    elif tipo == 'Receita':
+        resumo += f"📝 Descrição: {dados.get('descricao')}"
+    else: # Gastos / Rendimentos
         resumo += f"📂 Categoria: {dados.get('categoria')}\n📝 Descrição: {dados.get('descricao')}"
 
-    print(f"DEBUG: {dados}")
-    save_data_sheets(SHEET_ID, dados) 
+    print(f'DEBUG: {dados}')
 
-    await update.message.reply_text(resumo, parse_mode='Markdown')
+    # Salva no Google Sheets
+    sucesso = save_data_sheets(SHEET_ID, dados) 
+
+    if sucesso:
+        await update.message.reply_text(resumo, parse_mode='Markdown')
+    else:
+        await update.message.reply_text("⚠️ O registro foi processado, mas houve um erro ao salvar na planilha.")
+    
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -125,14 +144,13 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     return ConversationHandler.END
 
+# --- EXECUÇÃO ---
 def run_bot():
-    print('Bot iniciado...')
     app = Application.builder().token(TOKEN).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('registrar', start_financeiro)],
         states={
-            # REGEX atualizado para refletir o plural
             TIPO: [MessageHandler(filters.Regex('^(Gastos|Investimentos|Receita|Rendimentos)$'), get_tipo)],
             VALOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_valor)],
             CATEGORIA: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_categoria)],
@@ -147,5 +165,8 @@ def run_bot():
     )
 
     app.add_handler(conv_handler)
+    print('Bot em execução...')
     app.run_polling()
-    
+
+if __name__ == '__main__':
+    run_bot()

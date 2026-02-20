@@ -124,7 +124,7 @@ if st.session_state["authentication_status"]:
         values="Valor",
         title="Distribuição dos Investimentos"
       )
-      st.plotly_chart(fig, use_container_width=True)
+      st.plotly_chart(fig, width=True)
 
   # ==============================
   # 💸 GASTOS
@@ -211,13 +211,13 @@ if st.session_state["authentication_status"]:
           names="Categoria",
           title="Distribuição das Despesas"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width=True)
       else:
         st.info("Nenhuma despesa encontrada para o período selecionado.")
 
       st.dataframe(
         df_desp,
-        use_container_width=True,
+        width=True,
         hide_index=True,
         column_config={
           "Valor": st.column_config.NumberColumn("Valor", format="R$ %f"),
@@ -260,7 +260,7 @@ if st.session_state["authentication_status"]:
 
         st.dataframe(
           df_plan,
-          use_container_width=True,
+          width=True,
           hide_index=True,
           column_config={
             "Valor mensal": st.column_config.NumberColumn(format="R$ %f"),
@@ -274,7 +274,7 @@ if st.session_state["authentication_status"]:
           names="Objetivo",
           title="Distribuição da sobra"
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width=True)
 
 # ==============================
 # ERROS DE LOGIN

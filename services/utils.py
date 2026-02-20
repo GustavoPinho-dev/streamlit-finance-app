@@ -29,31 +29,55 @@ def normalize_df_inv(df_inv: pd.DataFrame) -> pd.DataFrame:
 
   return df_inv
 
-def format_data_bot(data_bot: dict) -> dict:
-  categoria = data_bot.get('tipo', '')
-
-  mapeamento = {
-    "Gastos": "Despesa"
-  }
-
-  tipo = mapeamento.get(categoria, "Outros")
-
+def format_data_bot(data_bot: dict) -> list:
+  # 1. Identifica o tipo de entrada
+  tipo_entrada = data_bot.get('tipo', '')
+  
+  # 2. Formatação comum de valor para "R$ 200"
   valor_raw = data_bot.get('valor', '0')
-  # Remove vírgulas para garantir que a conversão funcione se necessário
   valor_limpo = str(valor_raw).replace(',', '.')
   valor_formatado = f"R$ {valor_limpo}"
+  
+  # 3. Lógica condicional para montagem da linha (tabelas diferentes)
+  if tipo_entrada == "Gastos":
+    # Estrutura: Data, Descrição, Categoria, Tipo, Valor, Instituição
+    # Mapeamos 'Gastos' para aparecer como 'Despesa' na coluna Tipo
+    tipo_exibicao = "Despesa" 
+    
+    data_to_save = [
+      datetime.now().strftime("%d/%m/%Y"), # Data
+      data_bot.get('descricao', ''),       # Descrição
+      data_bot.get('categoria', 'Trabalho'),       # Categoria
+      tipo_exibicao,                       # Tipo (Mapeado)
+      valor_formatado,                     # Valor
+      data_bot.get('instituicao', '')      # Instituição
+    ]
+      
+  elif tipo_entrada == "Investimentos":
+    # Estrutura: Produto, Tipo, Vencimento, Valor, Indicador, Instituição
+    data_to_save = [
+      data_bot.get('produto', ''),         # Produto
+      data_bot.get('tipo_invest', ''),     # Tipo (Ex: Aplicação)
+      data_bot.get('vencimento', ''),      # Vencimento
+      valor_formatado,                     # Valor
+      data_bot.get('indicador', ''),       # Indicador (Ex: SELIC)
+      data_bot.get('instituicao', '')      # Instituição
+    ]
 
-  data_to_save = [
-    datetime.now().strftime("%d/%m/%Y"), # Timestamp
-    data_bot.get('descricao', ''),
-    data_bot.get('categoria', ''),
-    tipo,
-    valor_formatado,
-    data_bot.get('instituicao', ''),
-    data_bot.get('produto', ''),
-    data_bot.get('tipo_invest', ''),
-    data_bot.get('vencimento', ''),
-    data_bot.get('indicador', '')
-  ]
+  elif tipo_entrada == "Receita":
+    tipo_exibicao = "Receita" 
+    
+    data_to_save = [
+      datetime.now().strftime("%d/%m/%Y"), # Data
+      data_bot.get('descricao', ''),       # Descrição
+      data_bot.get('categoria', ''),       # Categoria
+      tipo_exibicao,                       # Tipo (Mapeado)
+      valor_formatado,                     # Valor
+      data_bot.get('instituicao', '')      # Instituição
+    ]
+      
+  else:
+    # Caso receba algo fora do padrão, retorna uma lista vazia ou erro
+    return []
 
   return data_to_save

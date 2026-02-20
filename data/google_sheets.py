@@ -35,12 +35,16 @@ def read_sheet_by_name(sheet_id: str, worksheet_name: str) -> pd.DataFrame:
 def save_data_sheets(sheet_id: str, data_bot: dict):
   try:
     sheet = client.open_by_key(sheet_id)
-    worksheet = sheet.worksheet(data_bot['tipo'])
+    
+    if data_bot['tipo'] == 'Receita':
+      worksheet = sheet.worksheet('Gastos')
+    else:
+      worksheet = sheet.worksheet(data_bot['tipo'])
 
     data_to_save = format_data_bot(data_bot)
 
-    coluna_a = worksheet.col_values(1) 
-    proxima_linha = len(coluna_a) + 1
+    column_a = worksheet.col_values(1) 
+    proxima_linha = len(column_a) + 1
 
     worksheet.insert_row(data_to_save, proxima_linha)
     #worksheet.append_row(linha)
