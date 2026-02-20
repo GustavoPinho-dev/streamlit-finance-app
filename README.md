@@ -63,6 +63,8 @@ universe_domain = "googleapis.com"
 
 ## 📂 Estrutura de Pastas
 
+
+```
 ├── bot/
 │   └── bot.py            # Lógica da interface e máquina de estados
 ├── config/
@@ -77,6 +79,7 @@ universe_domain = "googleapis.com"
 ├── .streamlit/
 │   └── secrets.toml      # Configurações sensíveis (não versionar!)
 └── requirements.txt      # Dependências do projeto
+```
 
 ## 📝 Comandos Bot
 * /registrar: Inicia um novo lançamento financeiro.
