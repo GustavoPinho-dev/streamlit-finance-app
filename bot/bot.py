@@ -1,7 +1,8 @@
 import streamlit as st
 from datetime import datetime
 from typing import Final
-from data.google_sheets import save_data_sheets  # Certifique-se que o caminho está correto
+from data.google_sheets import save_data_sheets 
+from services.utils import is_valid_format_date
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application, 
@@ -16,9 +17,9 @@ from telegram.ext import (
 TOKEN: Final = st.secrets['bot_token']
 SHEET_ID = st.secrets["SHEET_ID"] 
 
-# Definição dos Estados da Conversa
+# Definição dos Estados da Conversa (Adicionado DATA_INICIO e DATA_FIM)
 (TIPO, VALOR, CATEGORIA, INSTITUICAO, DESCRICAO, 
- PRODUTO, TIPO_INVEST, VENCIMENTO, INDICADOR) = range(9)
+ PRODUTO, TIPO_INVEST, VENCIMENTO, INDICADOR, DATA_INICIO, DATA_FIM) = range(11)
 
 # --- INÍCIO ---
 async def start_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -49,11 +50,45 @@ async def get_valor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     elif tipo == 'Investimentos':
         await update.message.reply_text('Qual o **produto**? (Ex: CDB, Tesouro)', parse_mode='Markdown')
         return PRODUTO
-    else: # Gastos ou Rendimentos
+    elif tipo == 'Rendimentos':
+        await update.message.reply_text('Qual a **Data de Início**? (Ex: 01/01/2024)', parse_mode='Markdown')
+        return DATA_INICIO
+    else: # Gastos
         await update.message.reply_text('Qual a **categoria**? (Ex: Consumo, Fixo, Variável)', parse_mode='Markdown')
         return CATEGORIA
 
-# --- FLUXO GASTOS / RENDIMENTOS ---
+# --- FLUXO RENDIMENTOS (NOVO) ---
+async def get_data_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+  data_input = update.message.text
+  
+  # Validação da data
+  if not is_valid_format_date(data_input):
+    await update.message.reply_text(
+      '⚠️ *Formato de data inválido.*\nPor favor, digite a **Data de Início** novamente (Ex: 01/01/2024):', 
+      parse_mode='Markdown'
+    )
+    return DATA_INICIO # Retorna para o mesmo estado para tentar novamente
+
+  context.user_data['data_inicio'] = data_input
+  await update.message.reply_text('Qual a **Data de Fim**? (Ex: 31/01/2024)', parse_mode='Markdown')
+  return DATA_FIM
+
+async def get_data_fim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+  data_input = update.message.text
+  
+  # Validação da data
+  if not is_valid_format_date(data_input):
+    await update.message.reply_text(
+      '⚠️ *Formato de data inválido.*\nPor favor, digite a **Data de Fim** novamente (Ex: 31/01/2024):', 
+      parse_mode='Markdown'
+    )
+    return DATA_FIM # Retorna para o mesmo estado
+
+  context.user_data['data_fim'] = data_input
+  await update.message.reply_text('Qual a **instituição** pagadora?', parse_mode='Markdown')
+  return INSTITUICAO
+
+# --- FLUXO GASTOS ---
 async def get_categoria(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['categoria'] = update.message.text
     await update.message.reply_text('Qual a **instituição**? (Ex: BTG, Itaú, Caixa)', parse_mode='Markdown')
@@ -76,25 +111,33 @@ async def get_tipo_invest(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return VENCIMENTO
 
 async def get_vencimento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['vencimento'] = update.message.text
-    await update.message.reply_text('Qual o **indicador/taxa**? (Ex: 100% CDI)', parse_mode='Markdown')
-    return INDICADOR
+  data_input = update.message.text
+  
+  # Validação da data (permitindo a exceção 'N/A' sugerida no seu prompt)
+  if data_input.strip().upper() != 'N/A' and not is_valid_format_date(data_input):
+    await update.message.reply_text(
+      '⚠️ *Formato inválido.*\nPor favor, digite o **vencimento** novamente (Ex: 12/12/2026 ou N/A):', 
+      parse_mode='Markdown'
+    )
+    return VENCIMENTO # Retorna para o mesmo estado
+
+  context.user_data['vencimento'] = data_input
+  await update.message.reply_text('Qual o **indicador/taxa**? (Ex: 100% CDI)', parse_mode='Markdown')
+  return INDICADOR
 
 async def get_indicador(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['indicador'] = update.message.text
     await update.message.reply_text('Qual a **instituição** do investimento?', parse_mode='Markdown')
     return INSTITUICAO
 
-# --- LOGICA COMPARTILHADA: INSTITUIÇÃO E DESCRIÇÃO ---
+# --- LOGICA COMPARTILHADA ---
 async def get_instituicao(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['instituicao'] = update.message.text 
     tipo = context.user_data['tipo']
 
-    # Se for Investimento ou Receita, encerra aqui pois já coletamos tudo
-    if tipo in ['Investimentos', 'Receita']:
+    if tipo in ['Investimentos', 'Receita', 'Rendimentos']:
         return await finalizar_registro(update, context)
     
-    # Para Gastos/Rendimentos, ainda pede a descrição
     await update.message.reply_text('Para finalizar, qual a **descrição**?', parse_mode='Markdown')
     return DESCRICAO
 
@@ -102,39 +145,37 @@ async def get_descricao(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     context.user_data['descricao'] = update.message.text
     tipo = context.user_data['tipo']
 
-    # Se for Receita, a descrição veio antes da Instituição
     if tipo == 'Receita':
         await update.message.reply_text('Qual a **instituição** da receita?', parse_mode='Markdown')
         return INSTITUICAO
     
-    # Para os outros, a descrição é o fim da linha
     return await finalizar_registro(update, context)
 
-# --- FINALIZAÇÃO E SALVAMENTO ---
+# --- FINALIZAÇÃO ---
 async def finalizar_registro(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     dados = context.user_data
     tipo = dados['tipo']
     
-    # Montagem do resumo visual para o usuário
     resumo = f"✅ **{tipo} registrado!**\n💰 Valor: R$ {dados['valor']}\n🏦 Instituição: {dados.get('instituicao', '')}\n"
     
     if tipo == 'Investimentos':
         resumo += (f"📦 Produto: {dados.get('produto')}\n🏷️ Tipo: {dados.get('tipo_invest')}\n"
                    f"📅 Vencimento: {dados.get('vencimento')}\n📈 Taxa: {dados.get('indicador')}")
+    elif tipo == 'Rendimentos':
+        resumo += f"🗓️ Período: {dados.get('data_inicio')} a {dados.get('data_fim')}"
     elif tipo == 'Receita':
         resumo += f"📝 Descrição: {dados.get('descricao')}"
-    else: # Gastos / Rendimentos
+    else: # Gastos
         resumo += f"📂 Categoria: {dados.get('categoria')}\n📝 Descrição: {dados.get('descricao')}"
 
-    print(f'DEBUG: {dados}')
-
     # Salva no Google Sheets
+    print(f'Dados recebidos: {dados}')
     sucesso = save_data_sheets(SHEET_ID, dados) 
 
     if sucesso:
         await update.message.reply_text(resumo, parse_mode='Markdown')
     else:
-        await update.message.reply_text("⚠️ O registro foi processado, mas houve um erro ao salvar na planilha.")
+        await update.message.reply_text("⚠️ Erro ao salvar na planilha.")
     
     context.user_data.clear()
     return ConversationHandler.END
@@ -144,15 +185,17 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     return ConversationHandler.END
 
-# --- EXECUÇÃO ---
 def run_bot():
     app = Application.builder().token(TOKEN).build()
+    print('Bot iniciado...')
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('registrar', start_financeiro)],
         states={
             TIPO: [MessageHandler(filters.Regex('^(Gastos|Investimentos|Receita|Rendimentos)$'), get_tipo)],
             VALOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_valor)],
+            DATA_INICIO: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_data_inicio)],
+            DATA_FIM: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_data_fim)],
             CATEGORIA: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_categoria)],
             INSTITUICAO: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_instituicao)],
             DESCRICAO: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_descricao)],
@@ -165,8 +208,4 @@ def run_bot():
     )
 
     app.add_handler(conv_handler)
-    print('Bot em execução...')
     app.run_polling()
-
-if __name__ == '__main__':
-    run_bot()

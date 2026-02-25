@@ -4,7 +4,7 @@ import plotly.express as px
 from data.google_sheets import read_sheet_by_name
 from config.auth import autenticar
 from google.oauth2 import service_account
-from services.utils import normalize_df_inv
+from services.utils import normalize_df_inv, get_data_resumo
 from etl.transform import FinanceDataPipeline
 
 # ==============================
@@ -173,19 +173,10 @@ if st.session_state["authentication_status"]:
 
     # 🔹 RESUMO MENSAL
     with tab_resumo:
-      
-
       for i in instituicoes:
-        df_instituicao = df_filtro[df_filtro["Instituição"] == i]
+        total_receitas, total_despesas, total_investido, saldo_anterior, saldo = get_data_resumo(df_filtro, i)
         with st.container(border=True):
           st.image(f"images/{i}_logo.png", width=70)
-
-          total_receitas = df_instituicao[df_instituicao["Tipo"] == "Receita"]["Valor"].sum()
-          total_despesas = df_instituicao[df_instituicao["Tipo"] == "Despesa"]["Valor"].sum()
-          total_investido = df_instituicao[df_instituicao["Categoria"] == "Investimentos"]["Valor"].sum()
-          saldo_anterior = df_instituicao[df_instituicao["Tipo"] == "Saldo"]["Valor"].sum()
-
-          saldo = saldo_anterior + (total_receitas - (total_despesas + total_investido))
 
           col1, col2 = st.columns(2)
           col3, col4 = st.columns(2)

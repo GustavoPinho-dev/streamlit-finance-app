@@ -6,7 +6,7 @@ Este projeto é um assistente financeiro automatizado que utiliza o **Telegram**
 
 O fluxo de dados segue uma estrutura de micro-serviço integrada ao Google Cloud:
 
-![Fluxo de Arquitetura](images/Minhas_Finanças_App.png)
+![Fluxo de Arquitetura](images/diagram_app_finance.png)
 
 1.  **Interface (Telegram Bot):** Captura os dados brutos via `python-telegram-bot`.
 2.  **Processamento (Backend Python):** Gerencia a máquina de estados (ConversationHandler) e valida os inputs.
