@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from data.google_sheets import read_sheet_by_name
 from config.auth import autenticar
 from google.oauth2 import service_account
 from services.utils import normalize_df_inv, get_data_resumo
@@ -21,17 +20,6 @@ SHEET_ID = st.secrets["SHEET_ID"]
 credentials = service_account.Credentials.from_service_account_info(
   st.secrets["gcp_service_account"]
 )
-
-# ==============================
-# CACHE DE DADOS
-# ==============================
-@st.cache_data(show_spinner="Carregando dados financeiros...")
-def carregar_dados(sheet_id):
-  return {
-    "rendimentos": read_sheet_by_name(sheet_id, "Rendimentos"),
-    "investimentos": read_sheet_by_name(sheet_id, "Investimentos"),
-    "gastos": read_sheet_by_name(sheet_id, "Gastos"),
-  }
 
 # ==============================
 # AUTENTICAÇÃO
@@ -208,7 +196,6 @@ if st.session_state["authentication_status"]:
 
       st.dataframe(
         df_desp,
-        width=True,
         hide_index=True,
         column_config={
           "Valor": st.column_config.NumberColumn("Valor", format="R$ %f"),

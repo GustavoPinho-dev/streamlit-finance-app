@@ -15,7 +15,7 @@ def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
         .str.replace(",", ".", regex=False)
       )
 
-    df[col] = pd.to_numeric(df[col], errors="ignore")
+    df[col] = pd.to_numeric(df[col])
 
   return df
 
