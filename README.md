@@ -8,17 +8,18 @@ O fluxo de dados segue uma estrutura de micro-serviço integrada ao Google Cloud
 
 ![Fluxo de Arquitetura](images/diagram_app_finance.png)
 
-1.  **Interface (Telegram Bot):** Captura os dados brutos via `python-telegram-bot`.
-2.  **Processamento (Backend Python):** Gerencia a máquina de estados (ConversationHandler) e valida os inputs.
-3.  **Destino (Google Sheets):** Armazena os dados normalizados para posterior análise e criação de dashboards.
+1.  **Interface (Telegram Bot):** Captura os dados brutos via `python-telegram-bot` e salva eles no Google Sheets.
+2.  **Armazenamento (Google Sheets):** Armazena os dados normalizados para posterior análise e criação de dashboards.
+3.  **Processamento (Backend Python):** Gerencia a máquina de estados (ConversationHandler), valida os inputs e realiza o ETL dos dados salvos para posterior visualização.
+4.  **Dashboard (Streamlit):** Os dados são carregados e organizados em tabelas gráficos para análise.
 
 ---
 
-## 🚀 Funcionalidades e Fluxos
+## 🚀 Funcionalidades e Fluxos do Bot
 
 O bot utiliza lógica condicional para garantir que apenas os dados necessários sejam coletados, otimizando a experiência do usuário:
 
-### 1. Gastos e Rendimentos
+### 1. Gastos
 Fluxo padrão para controle de fluxo de caixa mensal.
 * **Perguntas:** Valor ➡️ Categoria ➡️ Instituição ➡️ Descrição.
 
@@ -28,7 +29,11 @@ Fluxo detalhado para acompanhamento de patrimônio.
 
 ### 3. Receita
 Fluxo expresso para ganhos rápidos.
-* **Perguntas:** Valor (Finaliza o registro automaticamente).
+* **Perguntas:** Valor ➡️ Instituição ➡️ Descrição.
+
+### 4. Rendimentos
+Fluxo para registro de rendimentos de investimentos realizados.
+* **Perguntas:** Valor ➡️ Data Início ➡️ Data Fim
 
 ---
 
