@@ -92,13 +92,6 @@ def format_data_bot(data_bot: dict) -> list:
 
   return data_to_save
 
-def is_valid_format_date(date_text, format_string="%d/%m/%Y"):
-  try:
-    datetime.strptime(date_text, format_string)
-    return True
-  except ValueError:
-    return False
-
 def get_data_resumo(df: pd.DataFrame, instituicao: str):
   df_instituicao = df[df["Instituição"] == instituicao]
 
