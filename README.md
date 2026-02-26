@@ -77,7 +77,7 @@ universe_domain = "googleapis.com"
 ├── etl/
 │   └── transform.py      # Lógica para transformação dos dados
 ├── data/
-│   └── google_sheets.py  # Funções de integração (ETL/Load)
+│   └── extract.py  # Funções de integração (ETL/Load)
 ├── images/
 |   └── Imagens Bancos
 │   └── Minhas_Finanças_App.drawio  # Diagrama da arquitetura

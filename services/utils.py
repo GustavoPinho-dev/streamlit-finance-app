@@ -4,32 +4,27 @@ from datetime import datetime
 # função para formatar um valor em moeda para apenas númerico
 def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
   df = df.copy()
+  
+  # Definimos quais colunas queremos transformar
+  colunas_financeiras = ["Valor", "Rendimento"]
 
   for col in df.columns:
-    if df[col].dtype == object:
-      df[col] = (
-        df[col]
-        .astype(str)
-        .str.replace("R$", "", regex=False)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
-      )
-
-    df[col] = pd.to_numeric(df[col])
+    # Verifica se o nome da coluna (ou parte dele) está na nossa lista alvo
+    if any(alvo in col for alvo in colunas_financeiras):
+      if df[col].dtype == object:
+        df[col] = (
+          df[col]
+          .astype(str)
+          .str.replace("R$", "", regex=False)
+          .str.replace(".", "", regex=False)
+          .str.replace(",", ".", regex=False)
+          .str.strip()
+        )
+        
+      # Converte para numérico, tratando erros caso a célula esteja vazia
+      df[col] = pd.to_numeric(df[col], errors='coerce')
 
   return df
-
-# Aplica transformações aos dados de investimentos
-def normalize_df_inv(df_inv: pd.DataFrame) -> pd.DataFrame:
-  df_inv["Vencimento"] = pd.to_datetime(df_inv["Vencimento"], dayfirst=True).dt.date
-
-  df_inv["Tipo"] = df_inv.apply(
-    lambda r: f"{r['Produto']} - {r['Indicador']}"
-    if pd.notnull(r["Indicador"]) else str(r["Produto"]),
-    axis=1
-  )
-
-  return df_inv
 
 # Formata dados recebidos pelo bot para salvar na planilha
 def format_data_bot(data_bot: dict) -> list:

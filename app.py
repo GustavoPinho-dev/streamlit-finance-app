@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 from config.auth import autenticar
 from google.oauth2 import service_account
-from services.utils import normalize_df_inv, get_data_resumo
+from services.utils import get_data_resumo
 from etl.transform import FinanceDataPipeline
 
 # ==============================
@@ -90,8 +90,6 @@ if st.session_state["authentication_status"]:
   # ==============================
   elif pagina == "🏦 Investimentos":
     st.header("🏦 Investimentos")
-
-    df_inv = normalize_df_inv(df_inv)
 
     tab_lista, tab_div = st.tabs(["Lista", "Distribuição"])
 

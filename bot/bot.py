@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from typing import Final
-from data.google_sheets import save_data_sheets 
+from data.extract import save_data_sheets 
 from services.utils import is_valid_format_date
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
@@ -21,6 +21,8 @@ SHEET_ID = st.secrets["SHEET_ID"]
 (TIPO, VALOR, CATEGORIA, INSTITUICAO, DESCRICAO, 
  PRODUTO, TIPO_INVEST, VENCIMENTO, INDICADOR, DATA_INICIO, DATA_FIM) = range(11)
 
+(TIPO_CONSULTA) = range(1)
+
 # --- INÍCIO ---
 async def start_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_keyboard = [['Gastos', 'Investimentos', 'Receita', 'Rendimentos']]
@@ -29,6 +31,16 @@ async def start_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True),
         parse_mode='Markdown'
     )
+    return TIPO
+
+async def start_consulta(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    reply_keyboard = [['Gastos', 'Valor investido', 'Saldo restante']]
+    await update.message.reply_text(
+        'Nova consulta\nO que gostaria de consultar?',
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode='Markdown'
+    )
+
     return TIPO
 
 async def get_tipo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
