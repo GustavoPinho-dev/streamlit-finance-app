@@ -47,7 +47,7 @@ def format_data_bot(data_bot: dict) -> list:
       data_bot.get('descricao', ''),       # Descrição
       data_bot.get('categoria', 'Trabalho'),       # Categoria
       tipo_exibicao,                       # Tipo (Mapeado)
-      valor_formatado,                     # Valor
+      data_bot.get('valor', '0'),                     # Valor
       data_bot.get('instituicao', '')      # Instituição
     ]
       
@@ -57,7 +57,7 @@ def format_data_bot(data_bot: dict) -> list:
       data_bot.get('produto', ''),         # Produto
       data_bot.get('tipo_invest', ''),     # Tipo (Ex: Aplicação)
       data_bot.get('vencimento', ''),      # Vencimento
-      valor_formatado,                     # Valor
+      data_bot.get('valor', '0'),                     # Valor
       data_bot.get('indicador', ''),       # Indicador (Ex: SELIC)
       data_bot.get('instituicao', '')      # Instituição
     ]
@@ -70,7 +70,7 @@ def format_data_bot(data_bot: dict) -> list:
       data_bot.get('descricao', ''),       # Descrição
       data_bot.get('categoria', ''),       # Categoria
       tipo_exibicao,                       # Tipo (Mapeado)
-      valor_formatado,                     # Valor
+      data_bot.get('valor', '0'),                     # Valor
       data_bot.get('instituicao', '')      # Instituição
     ]
 
