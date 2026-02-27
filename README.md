@@ -1,17 +1,17 @@
 # 💰 Minhas Finanças - Telegram Bot
 
-Este projeto é um assistente financeiro automatizado que utiliza o **Telegram** como interface de entrada de dados (Ingestion) para alimentar uma planilha no **Google Sheets**. O sistema foi desenhado como um pipeline de dados inteligente que adapta suas perguntas com base no tipo de movimentação financeira.
+Este projeto é um assistente financeiro automatizado que utiliza o **Telegram** como interface de entrada de dados (Ingestion) para alimentar uma planilha no **Google Sheets**. O sistema foi desenhado como um pipeline de dados ETL que adapta suas perguntas com base no comando escolhido e no tipo de operação escolhida.
 
 ## 🏗️ Arquitetura do Sistema
 
-O fluxo de dados segue uma estrutura de micro-serviço integrada ao Google Cloud:
+O fluxo de dados segue uma estrutura de Pipeline de dados com integração ao Google Cloud:
 
 ![Fluxo de Arquitetura](images/diagram_app_finance.png)
 
 1.  **Interface (Telegram Bot):** Captura os dados brutos via `python-telegram-bot` e salva eles no Google Sheets.
 2.  **Armazenamento (Google Sheets):** Armazena os dados normalizados para posterior análise e criação de dashboards.
 3.  **Processamento (Backend Python):** Gerencia a máquina de estados (ConversationHandler), valida os inputs e realiza o ETL dos dados salvos para posterior visualização.
-4.  **Dashboard (Streamlit):** Os dados são carregados e organizados em tabelas gráficos para análise.
+4.  **Dashboard (Streamlit):** Os dados são carregados e organizados em tabelas e gráficos para análise.
 
 ---
 
@@ -48,7 +48,7 @@ Fluxo para registro de rendimentos de investimentos realizados.
 Para rodar no Streamlit Cloud ou localmente, configure o arquivo `.streamlit/secrets.toml`:
 
 ```toml
-bot_token = "SUA_TOKEN_DO_BOT_AQUI"
+bot_token = "SEU_TOKEN_DO_BOT_AQUI"
 SHEET_ID = "ID_DA_SUA_PLANILHA_GOOGLE"
 
 [gcp_service_account]
@@ -71,22 +71,32 @@ universe_domain = "googleapis.com"
 
 ```
 ├── bot/
-│   └── bot.py            # Lógica da interface e máquina de estados
+│   └── handlers/
+│       └── common.py               # Máquina de estados para a função 'cancelar'
+│       └── inquiry.py              # Máquina de estados para a função 'consultar'
+│       └── registration.py         # Máquina de estados para a função 'registrar'
+│   └── services/
+│       └── constants.py            # Constantes utilizadas na lógica dos comandos do bot
+│       └── finance_service.py      # Service para utilziar classes
+│       └── utils.py                # Funções de uso comum
+│   └── bot.py                      # Lógica da interface e máquina de estados
 ├── config/
-│   └── auth.py           # Autorização para acessar o Google Sheets
+│   └── auth.py                     # Autorização para acessar o Google Sheets
 ├── etl/
-│   └── transform.py      # Lógica para transformação dos dados
+│   └── transform.py                # Lógica para transformação dos dados
 ├── data/
-│   └── extract.py  # Funções de integração (ETL/Load)
+│   └── extract.py                  # Funções de integração (ETL/Load)
 ├── images/
 |   └── Imagens Bancos
 │   └── Minhas_Finanças_App.drawio  # Diagrama da arquitetura
 ├── .streamlit/
-│   └── secrets.toml      # Configurações sensíveis (não versionar!)
-└── requirements.txt      # Dependências do projeto
+│   └── secrets.toml                # Configurações sensíveis (não versionar!)
+└── requirements.txt                # Dependências do projeto
 ```
 
 ## 📝 Comandos Bot
 * /registrar: Inicia um novo lançamento financeiro.
 
 * /cancelar: Interrompe o fluxo atual e limpa os dados temporários.
+
+* /consultar: Inicia um fluxo para consultar um resumo dos dados salvos.

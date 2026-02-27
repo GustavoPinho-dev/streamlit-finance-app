@@ -34,7 +34,7 @@ if st.session_state["authentication_status"]:
   if "dados" not in st.session_state:
     pipeline = FinanceDataPipeline(SHEET_ID)
 
-    st.session_state["dados"] = pipeline.run()
+    st.session_state["dados"] = pipeline.run()  
 
   df = st.session_state["dados"]["rendimentos"]
   df_inv = st.session_state["dados"]["investimentos"]
@@ -160,17 +160,18 @@ if st.session_state["authentication_status"]:
     # 🔹 RESUMO MENSAL
     with tab_resumo:
       for i in instituicoes:
-        total_receitas, total_despesas, total_investido, saldo_anterior, saldo = get_data_resumo(df_filtro, i)
+        data_resumo = get_data_resumo(df_filtro, i)
+
         with st.container(border=True):
           st.image(f"images/{i}_logo.png", width=70)
 
           col1, col2 = st.columns(2)
           col3, col4 = st.columns(2)
 
-          col1.metric("Receitas", f"R$ {total_receitas:,.2f}")
-          col2.metric("Despesas", f"R$ {total_despesas:,.2f}")
-          col3.metric("Saldo", f"R$ {saldo:,.2f}")
-          col4.metric("Total Investido", f"R$ {total_investido:,.2f}")
+          col1.metric("Receitas", f"R$ {data_resumo['Receita Total']:,.2f}")
+          col2.metric("Despesas", f"R$ {data_resumo['Gastos']:,.2f}")
+          col3.metric("Saldo", f"R$ {data_resumo['Saldo']:,.2f}")
+          col4.metric("Total Investido", f"R$ {data_resumo['Total Investido']:,.2f}")
 
     # 🔹 DIVISÃO DE GASTOS
     with tab_div:
@@ -206,9 +207,9 @@ if st.session_state["authentication_status"]:
       col_plan_renda, col_plan_despesa = st.columns(2)
       col_plan_invest, col_plan_sobra = st.columns(2)
 
-      renda = col_plan_renda.number_input("Renda Mensal", value=float(total_receitas))
-      despesa = col_plan_despesa.number_input("Despesa Mensal", value=float(total_despesas))
-      invest = col_plan_invest.number_input("Valor Investido", value=float(total_investido))
+      renda = col_plan_renda.number_input("Renda Mensal", value=float(data_resumo['Receita Total']))
+      despesa = col_plan_despesa.number_input("Despesa Mensal", value=float(data_resumo['Gastos']))
+      invest = col_plan_invest.number_input("Valor Investido", value=float(data_resumo['Total Investido']))
 
       sobra = renda - (despesa + invest)
       col_plan_sobra.metric("Valor disponível", f"R$ {sobra:,.2f}")

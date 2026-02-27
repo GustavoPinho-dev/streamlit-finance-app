@@ -4,7 +4,7 @@ from bot.services.constants import CONS_TIPO, CONS_INSTITUICAO
 from bot.services.finance_service import consultar_resumo
 
 async def start_consulta(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    reply_keyboard = [['Gastos', 'Valor investido', 'Saldo restante']]
+    reply_keyboard = [['Gastos', 'Total Investido', 'Saldo Conta', 'Saldo Mês']]
     await update.message.reply_text(
         '🔍 **Nova Consulta**\nO que gostaria de consultar?',
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True),
@@ -25,13 +25,13 @@ async def exibir_resultado_consulta(update: Update, context: ContextTypes.DEFAUL
     instituicao = update.message.text
     tipo_consulta = context.user_data.get('consulta_tipo')
     
-    valor_retornado = consultar_resumo(instituicao)
+    result_consulta = consultar_resumo(instituicao)
 
     resumo = (
-        f"📊 **Resultado da Consulta**\n\n"
+        f"📊 **Resultado da Consulta (Mês atual)**\n\n"
         f"🔹 **Tipo:** {tipo_consulta}\n"
         f"🏦 **Instituição:** {instituicao}\n"
-        f"💰 **Valor:** R$ {valor_retornado}"
+        f"💰 **Valor:** R$ {result_consulta[tipo_consulta]:,.2f}"
     )
 
     await update.message.reply_text(resumo, parse_mode='Markdown')

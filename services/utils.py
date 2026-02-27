@@ -101,5 +101,13 @@ def get_data_resumo(df: pd.DataFrame, instituicao: str):
   saldo_anterior = df_instituicao[df_instituicao["Tipo"] == "Saldo"]["Valor"].sum()
 
   saldo = saldo_anterior + (total_receitas - (total_despesas + total_investido))
+  saldo_mes = total_receitas - (total_despesas + total_investido)
 
-  return total_receitas, total_despesas, total_investido, saldo_anterior, saldo
+  return {
+    "Receita Total": total_receitas, 
+    "Gastos": total_despesas, 
+    "Total Investido": total_investido, 
+    "Saldo Anterior": saldo_anterior, 
+    "Saldo Conta": saldo,
+    "Saldo Mês": saldo_mes
+  }

@@ -1,6 +1,8 @@
 from etl.transform import FinanceDataPipeline
 from data.extract import GoogleSheetsExtractor
 from services.utils import get_data_resumo
+from datetime import datetime
+import pandas as pd
 import streamlit as st
 
 SHEET_ID = st.secrets["SHEET_ID"]
@@ -18,4 +20,8 @@ def salvar_registro(dados: dict) -> bool:
 
 def consultar_resumo(instituicao: str):
   df = get_df_gastos()
-  return get_data_resumo(df, instituicao)
+  df['Data'] = pd.to_datetime(df['Data'], dayfirst=True)
+
+  filtro_mes_atual = (df['Data'].dt.month == datetime.now().month) & (df['Data'].dt.year == datetime.now().year)
+
+  return get_data_resumo(df[filtro_mes_atual], instituicao)

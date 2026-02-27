@@ -28,7 +28,7 @@ def run_bot():
           INDICADOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, registration.get_indicador)],
   
           # Fluxo Consulta
-          CONS_TIPO: [MessageHandler(filters.Regex('^(Gastos|Valor investido|Saldo restante)$'), inquiry.get_tipo_consulta)],
+          CONS_TIPO: [MessageHandler(filters.Regex('^(Gastos|Total Investido|Saldo Conta|Saldo Mês)$'), inquiry.get_tipo_consulta)],
           CONS_INSTITUICAO: [MessageHandler(filters.TEXT & ~filters.COMMAND, inquiry.exibir_resultado_consulta)],
         
         },
