@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from config.auth import autenticar
-from google.oauth2 import service_account
+from config.sheets import get_sheet_id_for_user
 from services.utils import get_data_resumo
 from etl.transform import FinanceDataPipeline
 
@@ -15,12 +15,6 @@ st.set_page_config(
   layout="wide"
 )
 
-SHEET_ID = st.secrets["SHEET_ID"]
-
-credentials = service_account.Credentials.from_service_account_info(
-  st.secrets["gcp_service_account"]
-)
-
 # ==============================
 # AUTENTICAÇÃO
 # ==============================
@@ -28,17 +22,20 @@ authenticator = autenticar()
 
 if st.session_state["authentication_status"]:
 
+  username = st.session_state.get("username")
+  sheet_id = get_sheet_id_for_user(username)
+  dados_key = f"dados_{username}" if username else "dados"
+
   # ==============================
   # CARREGA DADOS
   # ==============================
-  if "dados" not in st.session_state:
-    pipeline = FinanceDataPipeline(SHEET_ID)
+  if dados_key not in st.session_state:
+    pipeline = FinanceDataPipeline(sheet_id)
+    st.session_state[dados_key] = pipeline.run() 
 
-    st.session_state["dados"] = pipeline.run()  
-
-  df = st.session_state["dados"]["rendimentos"]
-  df_inv = st.session_state["dados"]["investimentos"]
-  df_gastos = st.session_state["dados"]["gastos"]
+  df = st.session_state[dados_key]["rendimentos"]
+  df_inv = st.session_state[dados_key]["investimentos"]
+  df_gastos = st.session_state[dados_key]["gastos"]
 
   # ==============================
   # MENU LATERAL
@@ -170,7 +167,7 @@ if st.session_state["authentication_status"]:
 
           col1.metric("Receitas", f"R$ {data_resumo['Receita Total']:,.2f}")
           col2.metric("Despesas", f"R$ {data_resumo['Gastos']:,.2f}")
-          col3.metric("Saldo", f"R$ {data_resumo['Saldo']:,.2f}")
+          col3.metric("Saldo", f"R$ {data_resumo['Saldo Conta']:,.2f}")
           col4.metric("Total Investido", f"R$ {data_resumo['Total Investido']:,.2f}")
 
     # 🔹 DIVISÃO DE GASTOS

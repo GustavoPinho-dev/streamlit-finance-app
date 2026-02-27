@@ -1,27 +1,36 @@
-from etl.transform import FinanceDataPipeline
-from data.extract import GoogleSheetsExtractor
-from services.utils import get_data_resumo
 from datetime import datetime
+
 import pandas as pd
 import streamlit as st
 
-SHEET_ID = st.secrets["SHEET_ID"]
+from data.extract import GoogleSheetsExtractor
+from etl.transform import FinanceDataPipeline
+from services.utils import get_data_resumo
 
-# Inicialização global das ferramentas de dados
-pipeline = FinanceDataPipeline(SHEET_ID)
-extractor = GoogleSheetsExtractor(SHEET_ID)
 
-def get_df_gastos():
-  data = pipeline.run()
-  return data["gastos"]
+class FinanceService:
+  def __init__(self, sheet_id: str):
+    self.sheet_id = sheet_id
+    self.pipeline = FinanceDataPipeline(sheet_id)
+    self.extractor = GoogleSheetsExtractor(sheet_id)
 
-def salvar_registro(dados: dict) -> bool:
-  return extractor.save_bot_data(dados)
+  def get_df_gastos(self):
+    data = self.pipeline.run()
+    return data["gastos"]
 
-def consultar_resumo(instituicao: str):
-  df = get_df_gastos()
-  df['Data'] = pd.to_datetime(df['Data'], dayfirst=True)
+  def salvar_registro(self, dados: dict) -> bool:
+    return self.extractor.save_bot_data(dados)
 
-  filtro_mes_atual = (df['Data'].dt.month == datetime.now().month) & (df['Data'].dt.year == datetime.now().year)
+  def consultar_resumo(self, instituicao: str):
+    df = self.get_df_gastos().copy()
+    df["Data"] = pd.to_datetime(df["Data"], dayfirst=True)
 
-  return get_data_resumo(df[filtro_mes_atual], instituicao)
+    filtro_mes_atual = (df["Data"].dt.month == datetime.now().month) & (
+      df["Data"].dt.year == datetime.now().year
+    )
+
+    return get_data_resumo(df[filtro_mes_atual], instituicao)
+
+  def get_instituicoes(self):
+    df = self.get_df_gastos()
+    return pd.unique(df["Instituição"])

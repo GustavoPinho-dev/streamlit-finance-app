@@ -2,7 +2,15 @@ from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 from bot.services.constants import *
 from bot.services.utils import is_valid_format_date
-from bot.services.finance_service import salvar_registro
+from bot.services.finance_service import FinanceService
+import streamlit as st
+
+def get_sheet_id_by_username(username: str) -> str:
+  users = st.secrets.get('auth', {}).get('credentials', {}).get('usernames', {})
+  if username and username in users and 'sheet_id' in users[username]:
+    return users[username]['sheet_id']
+
+  return st.secrets['SHEET_ID']
 
 
 # --- INÍCIO REGISTRO ---
@@ -122,7 +130,11 @@ async def finalizar_registro(update: Update, context: ContextTypes.DEFAULT_TYPE)
     else: 
         resumo += f"📂 Categoria: {dados.get('categoria')}\n📝 Descrição: {dados.get('descricao')}"
 
-    sucesso = salvar_registro(dados)
+    username = update.effective_user.username if update.effective_user else None
+    sheet_id = get_sheet_id_by_username(username)
+    finance_service = FinanceService(sheet_id)
+    
+    sucesso = finance_service.salvar_registro(dados)
     if sucesso:
         await update.message.reply_text(resumo, parse_mode='Markdown')
     else:
