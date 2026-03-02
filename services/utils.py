@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import datetime
+import unicodedata
 
 # função para formatar um valor em moeda para apenas númerico
 def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
@@ -111,3 +112,19 @@ def get_data_resumo(df: pd.DataFrame, instituicao: str):
     "Saldo Conta": saldo,
     "Saldo Mês": saldo_mes
   }
+
+def padronizar_string(texto: str) -> str:
+    if texto is None:
+        return None
+
+    # Normaliza para separar letras de acentos
+    texto_normalizado = unicodedata.normalize('NFD', texto)
+
+    # Remove os acentos
+    texto_sem_acentos = ''.join(
+        char for char in texto_normalizado
+        if unicodedata.category(char) != 'Mn'
+    )
+
+    # Converte para uppercase
+    return texto_sem_acentos.upper()

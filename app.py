@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 from config.auth import autenticar
 from config.sheets import get_sheet_id_for_user
-from services.utils import get_data_resumo
+from services.utils import get_data_resumo, padronizar_string
 from etl.transform import FinanceDataPipeline
 
 # ==============================
@@ -160,7 +160,7 @@ if st.session_state["authentication_status"]:
         data_resumo = get_data_resumo(df_filtro, i)
 
         with st.container(border=True):
-          st.image(f"images/{i}_logo.png", width=70)
+          st.image(f"images/{padronizar_string(i)}_logo.png", width=70)
 
           col1, col2 = st.columns(2)
           col3, col4 = st.columns(2)
