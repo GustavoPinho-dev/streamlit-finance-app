@@ -2,6 +2,32 @@ import pandas as pd
 from datetime import datetime
 import unicodedata
 
+
+def padronizar_valor_recebido(valor) -> str:
+  """
+  Garante o padrão de valor com duas casas decimais e separador ",".
+
+  Exemplos:
+  - "68,90" -> "68,90"
+  - "100" -> "100,00"
+  - 100 -> "100,00"
+  """
+  if valor is None or str(valor).strip() == "":
+    return "0,00"
+
+  valor_str = str(valor).strip()
+
+  if "," in valor_str and "." in valor_str:
+    valor_limpo = valor_str.replace(".", "").replace(",", ".")
+  elif "," in valor_str:
+    valor_limpo = valor_str.replace(",", ".")
+  else:
+    valor_limpo = valor_str
+
+  valor_float = float(valor_limpo)
+
+  return f"{valor_float:.2f}".replace(".", ",")
+
 # função para formatar um valor em moeda para apenas númerico
 def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
   df = df.copy()
@@ -32,10 +58,8 @@ def format_data_bot(data_bot: dict) -> list:
   # 1. Identifica o tipo de entrada
   tipo_entrada = data_bot.get('tipo', '')
   
-  # 2. Formatação comum de valor para "R$ 200"
-  valor_raw = data_bot.get('valor', '0')
-  valor_limpo = str(valor_raw).replace(',', '.')
-  valor_formatado = f"R$ {valor_limpo}"
+  # 2. Formatação comum de valor para "100,00"
+  valor_padronizado = padronizar_valor_recebido(data_bot.get('valor', '0'))
   
   # 3. Lógica condicional para montagem da linha (tabelas diferentes)
   if tipo_entrada == "Gastos":
@@ -48,7 +72,7 @@ def format_data_bot(data_bot: dict) -> list:
       data_bot.get('descricao', ''),       # Descrição
       data_bot.get('categoria', 'Trabalho'),       # Categoria
       tipo_exibicao,                       # Tipo (Mapeado)
-      data_bot.get('valor', '0'),                     # Valor
+      valor_padronizado,                              # Valor
       data_bot.get('instituicao', '')      # Instituição
     ]
       
@@ -58,7 +82,7 @@ def format_data_bot(data_bot: dict) -> list:
       data_bot.get('produto', ''),         # Produto
       data_bot.get('tipo_invest', ''),     # Tipo (Ex: Aplicação)
       data_bot.get('vencimento', ''),      # Vencimento
-      data_bot.get('valor', '0'),                     # Valor
+      valor_padronizado,                              # Valor
       data_bot.get('indicador', ''),       # Indicador (Ex: SELIC)
       data_bot.get('instituicao', '')      # Instituição
     ]
@@ -71,7 +95,7 @@ def format_data_bot(data_bot: dict) -> list:
       data_bot.get('descricao', ''),       # Descrição
       data_bot.get('categoria', ''),       # Categoria
       tipo_exibicao,                       # Tipo (Mapeado)
-      data_bot.get('valor', '0'),                     # Valor
+      valor_padronizado,                              # Valor
       data_bot.get('instituicao', '')      # Instituição
     ]
 
@@ -81,7 +105,7 @@ def format_data_bot(data_bot: dict) -> list:
     data_to_save = [
       data_bot.get('data_inicio', datetime.now().strftime("%d/%m/%Y")),    # Data Início
       data_bot.get('data_fim', datetime.now().strftime("%d/%m/%Y")),       # Descrição
-      f"R$ {str(data_bot.get('valor', '')).replace(',', '.')}", # Valor do rendimento
+      f"R$ {valor_padronizado}",                      # Valor do rendimento
       data_bot.get('instituicao', '')      # Instituição
     ]
       
