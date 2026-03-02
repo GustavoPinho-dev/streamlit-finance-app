@@ -66,6 +66,44 @@ universe_domain = "googleapis.com"
 ```
 --
 
+
+## 🐳 Rodando o bot com Docker (local)
+
+### 1) Crie o arquivo de segredo
+Crie o arquivo `.streamlit/secrets.toml` com o token do bot, o `SHEET_ID` e as credenciais da conta de serviço (mesmo formato da seção de configuração acima).
+
+### 2) Suba o container do bot
+Com Docker e Docker Compose instalados, execute:
+
+```bash
+docker compose up --build bot
+```
+
+O container inicia com o comando `python main.py`, que executa o Telegram bot em modo polling.
+
+### 3) Rodar em background
+Se quiser deixar em segundo plano:
+
+```bash
+docker compose up -d --build bot
+```
+
+Para acompanhar logs:
+
+```bash
+docker compose logs -f bot
+```
+
+Para parar:
+
+```bash
+docker compose down
+```
+
+> Observação: o arquivo de segredos é montado em modo somente leitura (`/app/.streamlit/secrets.toml`) e **não** é incluído na imagem.
+
+---
+
 ## 📂 Estrutura de Pastas
 
 
