@@ -82,18 +82,24 @@ if st.session_state["authentication_status"]:
     tab_dados, tab_hist = st.tabs(["Dados", "Histórico"])
 
     with tab_dados:
-      st.dataframe(
-        df,
-        hide_index=True,
-        column_config={
-          "Rendimento": st.column_config.NumberColumn("Rendimento", format="R$ %f"),
-          "Data Inicio": st.column_config.DateColumn("Data Início", format="DD/MM/YYYY"),
-          "Data Fim": st.column_config.DateColumn("Data Fim", format="DD/MM/YYYY")
-        }
-      )
+      if not df.empty:
+        st.dataframe(
+          df,
+          hide_index=True,
+          column_config={
+            "Rendimento": st.column_config.NumberColumn("Rendimento", format="R$ %f"),
+            "Data Inicio": st.column_config.DateColumn("Data Início", format="DD/MM/YYYY"),
+            "Data Fim": st.column_config.DateColumn("Data Fim", format="DD/MM/YYYY")
+          }
+        )
+      else:
+        st.info("Nenhum rendimento encontrado.")
 
     with tab_hist:
-      st.line_chart(df, x="Data Fim", y="Rendimento")
+      if not df.empty:
+        st.line_chart(df, x="Data Fim", y="Rendimento")
+      else:
+        st.info("Nenhum rendimento encontrado.")
 
   # ==============================
   # 🏦 INVESTIMENTOS
@@ -104,23 +110,30 @@ if st.session_state["authentication_status"]:
     tab_lista, tab_div = st.tabs(["Lista", "Distribuição"])
 
     with tab_lista:
-      st.dataframe(
-        df_inv,
-        hide_index=True,
-        column_config={
-          "Valor": st.column_config.NumberColumn("Valor", format="R$ %f"),
-          "Vencimento": st.column_config.DateColumn("Vencimento", format="DD/MM/YYYY")
-        }
-      )
+      if not df.empty:
+        st.dataframe(
+          df_inv,
+          hide_index=True,
+          column_config={
+            "Valor": st.column_config.NumberColumn("Valor", format="R$ %f"),
+            "Vencimento": st.column_config.DateColumn("Vencimento", format="DD/MM/YYYY")
+          }
+        )
+      else:
+        st.info("Nenhum investimento encontrado.")
 
     with tab_div:
-      fig = px.pie(
-        df_inv,
-        names="Tipo",
-        values="Valor",
-        title="Distribuição dos Investimentos"
-      )
-      st.plotly_chart(fig)
+      if not df.empty:
+        fig = px.pie(
+          df_inv,
+          names="Tipo",
+          values="Valor",
+          title="Distribuição dos Investimentos"
+        )
+        st.plotly_chart(fig)
+      else:
+        st.info("Nenhum investimento encontrado.")
+
 
   # ==============================
   # 💸 GASTOS
