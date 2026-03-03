@@ -3,10 +3,14 @@ from data.extract import GoogleSheetsExtractor  # Importando a nova classe
 from services.utils import format_moeda_to_numeric
 
 class FinanceDataPipeline:
-  def __init__(self, sheet_id: str):
+  def __init__(self, sheet_id: str, credentials_dict: dict):
     self.sheet_id = sheet_id
+    self.credentials_dict = credentials_dict
     # Inicializamos o extrator uma única vez
-    self.extractor = GoogleSheetsExtractor(self.sheet_id)
+    self.extractor = GoogleSheetsExtractor(
+      sheet_id=self.sheet_id,
+      credentials_dict=self.credentials_dict
+    )
 
   def _extract(self, tab_name: str) -> pd.DataFrame:
     """Utiliza o novo método da classe Extrator"""
