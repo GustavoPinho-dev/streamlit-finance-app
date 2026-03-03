@@ -26,7 +26,7 @@ async def get_tipo_consulta(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     username = update.effective_user.username if update.effective_user else None
     sheet_id = get_sheet_id_by_username(username)
-    finance_service = FinanceService(sheet_id)
+    finance_service = FinanceService(sheet_id, st.secrets["gcp_service_account"])
     
     instituicoes = finance_service.get_instituicoes()
     reply_keyboard = [list(instituicoes)]
@@ -44,7 +44,7 @@ async def exibir_resultado_consulta(update: Update, context: ContextTypes.DEFAUL
     
     username = update.effective_user.username if update.effective_user else None
     sheet_id = get_sheet_id_by_username(username)
-    finance_service = FinanceService(sheet_id)
+    finance_service = FinanceService(sheet_id, st.secrets["gcp_service_account"])
 
     result_consulta = finance_service.consultar_resumo(instituicao)
 

@@ -5,6 +5,7 @@ from config.auth import autenticar
 from config.sheets import get_sheet_id_for_user
 from services.utils import get_data_resumo, padronizar_string
 from etl.transform import FinanceDataPipeline
+from data.extract import GoogleSheetsAuthError, GoogleSheetsReadError
 
 # ==============================
 # CONFIGURAÇÃO DA PÁGINA
@@ -30,8 +31,20 @@ if st.session_state["authentication_status"]:
   # CARREGA DADOS
   # ==============================
   if dados_key not in st.session_state:
-    pipeline = FinanceDataPipeline(sheet_id)
-    st.session_state[dados_key] = pipeline.run() 
+    try:
+      pipeline = FinanceDataPipeline(
+        sheet_id=sheet_id,
+        credentials_dict=st.secrets["gcp_service_account"]
+      )
+      st.session_state[dados_key] = pipeline.run()
+    except GoogleSheetsAuthError as e:
+      st.error("Falha na autenticação com Google Sheets. Verifique as credenciais.")
+      st.exception(e)
+      st.stop()
+    except GoogleSheetsReadError as e:
+      st.error("Não foi possível carregar os dados da planilha.")
+      st.exception(e)
+      st.stop()
 
   df = st.session_state[dados_key]["rendimentos"]
   df_inv = st.session_state[dados_key]["investimentos"]

@@ -1,25 +1,28 @@
 from datetime import datetime
 
 import pandas as pd
-import streamlit as st
 
-from data.extract import GoogleSheetsExtractor
+from data.extract import GoogleSheetsExtractor, GoogleSheetsReadError
 from etl.transform import FinanceDataPipeline
 from services.utils import get_data_resumo
 
 
 class FinanceService:
-  def __init__(self, sheet_id: str):
+  def __init__(self, sheet_id: str, credentials_dict: dict):
     self.sheet_id = sheet_id
-    self.pipeline = FinanceDataPipeline(sheet_id)
-    self.extractor = GoogleSheetsExtractor(sheet_id)
+    self.credentials_dict = credentials_dict
+    self.pipeline = FinanceDataPipeline(sheet_id, credentials_dict)
+    self.extractor = GoogleSheetsExtractor(sheet_id, credentials_dict)
 
   def get_df_gastos(self):
     data = self.pipeline.run()
     return data["gastos"]
 
   def salvar_registro(self, dados: dict) -> bool:
-    return self.extractor.save_bot_data(dados)
+    try:
+      return self.extractor.save_bot_data(dados)
+    except GoogleSheetsReadError:
+      return False
 
   def consultar_resumo(self, instituicao: str):
     df = self.get_df_gastos().copy()

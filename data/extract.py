@@ -1,12 +1,20 @@
-import streamlit as st
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from services.utils import format_data_bot
 
+
+class GoogleSheetsAuthError(Exception):
+  """Erro de autenticação com Google Sheets."""
+
+
+class GoogleSheetsReadError(Exception):
+  """Erro de leitura/escrita no Google Sheets."""
+
 class GoogleSheetsExtractor:
-  def __init__(self, sheet_id: str):
+  def __init__(self, sheet_id: str, credentials_dict: dict):
     self.sheet_id = sheet_id
+    self.credentials_dict = credentials_dict
     self.scopes = [
       "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/drive"
@@ -17,14 +25,12 @@ class GoogleSheetsExtractor:
     """Gerencia a conexão com a API do Google."""
     try:
       creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
+        self.credentials_dict,
         scopes=self.scopes
       )
       return gspread.authorize(creds)
     except Exception as e:
-      st.error("Falha crítica na autenticação com Google Sheets.")
-      st.exception(e)
-      st.stop()
+      raise GoogleSheetsAuthError("Falha crítica na autenticação com Google Sheets.") from e
 
   def load_sheet_data(self, worksheet_name: str) -> pd.DataFrame:
     """Extrai dados de uma aba específica e retorna um DataFrame."""
@@ -34,8 +40,7 @@ class GoogleSheetsExtractor:
       data = worksheet.get_all_records()
       return pd.DataFrame(data)
     except Exception as e:
-      st.error(f"[ERROR] Erro ao ler a aba {worksheet_name}: {e}")
-      return pd.DataFrame()
+      raise GoogleSheetsReadError(f"Erro ao ler a aba {worksheet_name}.") from e
 
   def save_bot_data(self, data_bot: dict) -> bool:
     """Formata e salva os dados vindos do bot na aba correta."""
@@ -56,5 +61,4 @@ class GoogleSheetsExtractor:
       print(f"✅ Dados enviados com sucesso para a aba {tab_name}!")
       return True
     except Exception as e:
-      print(f"❌ Erro ao salvar no Sheets: {e}")
-      return False
+      raise GoogleSheetsReadError(f"Erro ao salvar dados na aba {tab_name}.") from e

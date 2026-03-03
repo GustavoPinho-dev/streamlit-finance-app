@@ -132,7 +132,7 @@ async def finalizar_registro(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     username = update.effective_user.username if update.effective_user else None
     sheet_id = get_sheet_id_by_username(username)
-    finance_service = FinanceService(sheet_id)
+    finance_service = FinanceService(sheet_id, st.secrets["gcp_service_account"])
     
     sucesso = finance_service.salvar_registro(dados)
     if sucesso:
