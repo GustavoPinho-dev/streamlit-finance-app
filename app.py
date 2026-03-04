@@ -141,6 +141,8 @@ if st.session_state["authentication_status"]:
   elif pagina == "💸 Gastos":
     st.header("💸 Gastos")
 
+    print(f'DataFrame Gastos: {df_gastos}')
+
     # Instituições
     instituicoes = pd.unique(df_gastos["Instituição"])
 
@@ -184,6 +186,8 @@ if st.session_state["authentication_status"]:
     with tab_resumo:
       for i in instituicoes:
         data_resumo = get_data_resumo(df_filtro, i)
+
+        print(f'Dados de resumo retornados: {data_resumo}')
 
         with st.container(border=True):
           st.image(f"images/{padronizar_string(i)}_logo.png", width=70)

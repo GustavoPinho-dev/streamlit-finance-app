@@ -36,8 +36,8 @@ async def get_valor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['valor'] = update.message.text 
     tipo = context.user_data['tipo']
     if tipo == 'Receita':
-        await update.message.reply_text('Qual a **descrição**?', parse_mode='Markdown')
-        return DESCRICAO
+        await update.message.reply_text('Qual a **categoria** da receita (Trabalho, Freela, ...) ?', parse_mode='Markdown')
+        return CATEGORIA
     elif tipo == 'Investimentos':
         await update.message.reply_text('Qual o **produto**? (Ex: CDB)', parse_mode='Markdown')
         return PRODUTO
@@ -68,6 +68,9 @@ async def get_data_fim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def get_categoria(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['categoria'] = update.message.text
+    if context.user_data.get('tipo') == 'Receita':
+      await update.message.reply_text('Qual a **descrição** (Salário, Freela, ...)?', parse_mode='Markdown')
+      return DESCRICAO
     await update.message.reply_text('Qual a **instituição**? (Ex: BTG, Itaú, Caixa)', parse_mode='Markdown')
     return INSTITUICAO
 
@@ -126,7 +129,7 @@ async def finalizar_registro(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif tipo == 'Rendimentos':
         resumo += f"🗓️ Período: {dados.get('data_inicio')} a {dados.get('data_fim')}"
     elif tipo == 'Receita':
-        resumo += f"📝 Descrição: {dados.get('descricao')}"
+        resumo += f"📂 Categoria: {dados.get('categoria')}\n📝 Descrição: {dados.get('descricao')}"
     else: 
         resumo += f"📂 Categoria: {dados.get('categoria')}\n📝 Descrição: {dados.get('descricao')}"
 
