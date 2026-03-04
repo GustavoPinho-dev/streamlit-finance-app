@@ -1,7 +1,10 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
 from bot.services.constants import *
 from bot.handlers import registration, inquiry, common
+from bot.services.logger import get_logger
 import streamlit as st
+
+logger = get_logger(__name__)
 
 
 def run_bot():
@@ -36,5 +39,5 @@ def run_bot():
     )
 
     app.add_handler(conv_handler)
-    print("Bot running...")
+    logger.info('Bot iniciado e aguardando mensagens via polling.')
     app.run_polling()        

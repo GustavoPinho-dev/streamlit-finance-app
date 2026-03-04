@@ -2,10 +2,12 @@ from datetime import datetime
 
 import pandas as pd
 
+from bot.services.logger import get_logger
 from data.extract import GoogleSheetsExtractor, GoogleSheetsReadError
 from etl.transform import FinanceDataPipeline
 from services.utils import get_data_resumo
 
+logger = get_logger(__name__)
 
 class FinanceService:
   def __init__(self, sheet_id: str, credentials_dict: dict):
@@ -21,7 +23,8 @@ class FinanceService:
   def salvar_registro(self, dados: dict) -> bool:
     try:
       return self.extractor.save_bot_data(dados)
-    except GoogleSheetsReadError:
+    except Exception:
+      logger.exception('Erro ao salvar registro no Google Sheets para sheet_id=%s', self.sheet_id)
       return False
 
   def consultar_resumo(self, instituicao: str):

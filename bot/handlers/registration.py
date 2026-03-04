@@ -4,6 +4,9 @@ from bot.services.constants import *
 from bot.services.utils import is_valid_format_date
 from bot.services.finance_service import FinanceService
 import streamlit as st
+from bot.services.logger import get_logger
+
+logger = get_logger(__name__)
 
 def get_sheet_id_by_username(username: str) -> str:
   users = st.secrets.get('auth', {}).get('credentials', {}).get('usernames', {})
@@ -12,9 +15,9 @@ def get_sheet_id_by_username(username: str) -> str:
 
   return st.secrets['SHEET_ID']
 
-
 # --- INÍCIO REGISTRO ---
 async def start_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info('Início do fluxo de registro para user_id=%s', update.effective_user.id if update.effective_user else 'desconhecido')
     reply_keyboard = [['Gastos', 'Investimentos', 'Receita', 'Rendimentos']]
     await update.message.reply_text(
         '💰 **Novo Registro Financeiro**\nO que vamos lançar agora?',
@@ -25,6 +28,7 @@ async def start_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 async def get_tipo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['tipo'] = update.message.text
+    logger.info('Tipo selecionado no registro: %s', update.message.text)
     await update.message.reply_text(
         f'Selecionado: **{update.message.text}**\nQual o valor? (Ex: 100)',
         reply_markup=ReplyKeyboardRemove(),
@@ -51,6 +55,7 @@ async def get_valor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def get_data_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     data_input = update.message.text
     if not is_valid_format_date(data_input):
+        logger.warning('Data de início inválida recebida: %s', data_input)
         await update.message.reply_text('⚠️ *Formato inválido.* (Ex: 01/01/2024):', parse_mode='Markdown')
         return DATA_INICIO
     context.user_data['data_inicio'] = data_input
@@ -60,6 +65,7 @@ async def get_data_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def get_data_fim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     data_input = update.message.text
     if not is_valid_format_date(data_input):
+        logger.warning('Data de fim inválida recebida: %s', data_input)
         await update.message.reply_text('⚠️ *Formato inválido.* (Ex: 31/01/2024):', parse_mode='Markdown')
         return DATA_FIM
     context.user_data['data_fim'] = data_input
@@ -92,6 +98,7 @@ async def get_tipo_invest(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def get_vencimento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     data_input = update.message.text
     if data_input.strip().upper() != 'N/A' and not is_valid_format_date(data_input):
+        logger.warning('Vencimento inválido recebido: %s', data_input)
         await update.message.reply_text('⚠️ *Formato inválido.* (Ex: 12/12/2026 ou N/A):', parse_mode='Markdown')
         return VENCIMENTO
     context.user_data['vencimento'] = data_input
@@ -136,17 +143,21 @@ async def finalizar_registro(update: Update, context: ContextTypes.DEFAULT_TYPE)
     username = update.effective_user.username if update.effective_user else None
     sheet_id = get_sheet_id_by_username(username)
     finance_service = FinanceService(sheet_id, st.secrets["gcp_service_account"])
-    
+
+    logger.info('Finalizando registro tipo=%s para user=%s', tipo, username or 'sem_username')
+    logger.info('Registro sendo salvo: %s', dados)
     sucesso = finance_service.salvar_registro(dados)
     if sucesso:
         await update.message.reply_text(resumo, parse_mode='Markdown')
     else:
+        logger.error('Falha ao salvar registro na planilha para user=%s', username or 'sem_username')
         await update.message.reply_text("⚠️ Erro ao salvar na planilha.")
     
     context.user_data.clear()
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info('Fluxo de registro cancelado por user_id=%s', update.effective_user.id if update.effective_user else 'desconhecido')
     await update.message.reply_text('❌ Ação cancelada.', reply_markup=ReplyKeyboardRemove())
     context.user_data.clear()
     return ConversationHandler.END

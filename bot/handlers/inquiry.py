@@ -3,6 +3,9 @@ from telegram.ext import ContextTypes, ConversationHandler
 from bot.services.constants import CONS_TIPO, CONS_INSTITUICAO
 from bot.services.finance_service import FinanceService
 import streamlit as st
+from bot.services.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_sheet_id_by_username(username: str) -> str:
@@ -13,6 +16,7 @@ def get_sheet_id_by_username(username: str) -> str:
   return st.secrets['SHEET_ID']
 
 async def start_consulta(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info('Início do fluxo de consulta para user_id=%s', update.effective_user.id if update.effective_user else 'desconhecido')
     reply_keyboard = [['Gastos', 'Total Investido', 'Saldo Conta', 'Saldo Mês']]
     await update.message.reply_text(
         '🔍 **Nova Consulta**\nO que gostaria de consultar?',
@@ -29,6 +33,7 @@ async def get_tipo_consulta(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     finance_service = FinanceService(sheet_id, st.secrets["gcp_service_account"])
     
     instituicoes = finance_service.get_instituicoes()
+    logger.info('Consulta tipo=%s solicitada por user=%s', context.user_data['consulta_tipo'], username or 'sem_username')
     reply_keyboard = [list(instituicoes)]
 
     await update.message.reply_text(
@@ -47,6 +52,7 @@ async def exibir_resultado_consulta(update: Update, context: ContextTypes.DEFAUL
     finance_service = FinanceService(sheet_id, st.secrets["gcp_service_account"])
 
     result_consulta = finance_service.consultar_resumo(instituicao)
+    logger.info('Exibindo resultado da consulta: %s', result_consulta)
 
     resumo = (
         f"📊 **Resultado da Consulta (Mês atual)**\n\n"
