@@ -2,3 +2,4 @@ plotly==5.20.0
 gspread==6.1.0
 streamlit-authenticator
 python-telegram-bot
+psycopg2-binary==2.9.9

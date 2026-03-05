@@ -1,4 +1,17 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: finance-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finance
+      POSTGRES_USER: finance_user
+      POSTGRES_PASSWORD: finance_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   bot:
     build:
       context: .
@@ -6,5 +19,12 @@ services:
     container_name: finance-telegram-bot
     command: python main.py
     restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://finance_user:finance_pass@postgres:5432/finance
     volumes:
       - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro
+
+volumes:
+  postgres_data:

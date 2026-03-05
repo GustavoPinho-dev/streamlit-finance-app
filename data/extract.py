@@ -3,6 +3,7 @@ import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from services.utils import format_data_bot
+from data.bronze_postgres import BronzePostgresRepository
 
 class GoogleSheetsExtractor:
   def __init__(self, sheet_id: str):
@@ -12,6 +13,7 @@ class GoogleSheetsExtractor:
       "https://www.googleapis.com/auth/drive"
     ]
     self.client = self._authenticate()
+    self.bronze_repository = BronzePostgresRepository()
 
   def _authenticate(self):
     """Gerencia a conexão com a API do Google."""
@@ -52,6 +54,19 @@ class GoogleSheetsExtractor:
       # Insere na próxima linha disponível
       # Usar append_row é geralmente mais eficiente que calcular a linha manualmente
       worksheet.append_row(data_to_save, value_input_option='USER_ENTERED')
+
+      bronze_saved = self.bronze_repository.insert_sheet_event(
+        source_sheet_id=self.sheet_id,
+        source_tab_name=tab_name,
+        source_event_type=data_bot.get('tipo', 'UNKNOWN'),
+        row_data=data_bot,
+        row_values=data_to_save,
+      )
+
+      if bronze_saved:
+        print("✅ Evento salvo na camada bronze (Postgres).")
+      else:
+        print("⚠️ Camada bronze não configurada (DATABASE_URL ausente).")
       
       print(f"✅ Dados enviados com sucesso para a aba {tab_name}!")
       return True
