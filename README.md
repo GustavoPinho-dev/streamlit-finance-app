@@ -79,6 +79,16 @@ Com Docker e Docker Compose instalados, execute:
 docker compose up --build bot
 ```
 
+### 2.1) Subir bot + Postgres (camada Bronze)
+Para iniciar o banco Postgres junto do bot e habilitar a camada bronze:
+
+```bash
+docker compose up --build
+```
+
+O serviço `bot` recebe automaticamente a variável `DATABASE_URL` apontando para o serviço `postgres`.
+Quando configurada, cada novo evento salvo no Google Sheets também é persistido na tabela `bronze.sheet_events`.
+
 O container inicia com o comando `python main.py`, que executa o Telegram bot em modo polling.
 
 ### 3) Rodar em background
@@ -101,6 +111,22 @@ docker compose down
 ```
 
 > Observação: o arquivo de segredos é montado em modo somente leitura (`/app/.streamlit/secrets.toml`) e **não** é incluído na imagem.
+
+### Banco Postgres (Bronze)
+
+No `docker-compose.yml` o Postgres é iniciado com os parâmetros:
+
+- `POSTGRES_DB=finance`
+- `POSTGRES_USER=finance_user`
+- `POSTGRES_PASSWORD=finance_pass`
+
+String de conexão usada no bot:
+
+```bash
+DATABASE_URL=postgresql://finance_user:finance_pass@postgres:5432/finance
+```
+
+A tabela de ingestão bronze é criada automaticamente na primeira escrita do bot.
 
 ---
 
