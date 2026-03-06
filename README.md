@@ -1,55 +1,182 @@
-# 💰 Minhas Finanças - Telegram Bot
+# 💰 Minhas Finanças App — Telegram Bot + Streamlit
 
-Este projeto é um assistente financeiro automatizado que utiliza o **Telegram** como interface de entrada de dados (Ingestion) para alimentar uma planilha no **Google Sheets**. O sistema foi desenhado como um pipeline de dados ETL que adapta suas perguntas com base no comando escolhido e no tipo de operação escolhida.
+Projeto de gestão financeira pessoal com **ingestão via Telegram**, **armazenamento no Google Sheets** e **visualização em dashboard no Streamlit**.
 
-## 🏗️ Arquitetura do Sistema
+> ⚙️ **Build to Learn:** este é um projeto construído com foco em aprendizado prático de engenharia de dados, automação, integração de APIs e desenvolvimento de aplicações de dados ponta a ponta.
 
-O fluxo de dados segue uma estrutura de Pipeline de dados com integração ao Google Cloud:
+---
+
+## 📌 Visão geral
+
+O projeto implementa uma arquitetura simples e didática para controlar movimentações financeiras em três camadas principais:
+
+1. **Entrada de dados (Bot no Telegram)**
+   - O usuário registra gastos, receitas, investimentos e rendimentos por conversa guiada.
+2. **Persistência (Google Sheets + Bronze opcional em Postgres)**
+   - Os dados operacionais ficam em planilhas.
+   - Opcionalmente, os eventos também são gravados em uma camada bronze no Postgres.
+3. **Consumo analítico (Streamlit)**
+   - A aplicação transforma e organiza os dados para exibição em tabelas, métricas e gráficos.
+
+---
+
+## 🧠 Objetivos do projeto (Build to Learn)
+
+Este repositório foi criado para praticar:
+
+- Integração com APIs externas (Telegram e Google Sheets).
+- Modelagem de fluxos conversacionais com máquina de estados.
+- Construção de pipeline ETL em Python.
+- Criação de dashboard interativo com Streamlit e Plotly.
+- Organização de código por domínios (`bot`, `etl`, `data`, `services`, `config`).
+- Execução local com Docker e orquestração com Docker Compose.
+
+---
+
+## 🏗️ Arquitetura
 
 ![Fluxo de Arquitetura](images/diagram_app_finance.png)
 
-1.  **Interface (Telegram Bot):** Captura os dados brutos via `python-telegram-bot` e salva eles no Google Sheets.
-2.  **Armazenamento (Google Sheets):** Armazena os dados normalizados para posterior análise e criação de dashboards.
-3.  **Processamento (Backend Python):** Gerencia a máquina de estados (ConversationHandler), valida os inputs e realiza o ETL dos dados salvos para posterior visualização.
-4.  **Dashboard (Streamlit):** Os dados são carregados e organizados em tabelas e gráficos para análise.
+### Componentes
+
+- **Telegram Bot (`bot/`)**
+  - Coleta dados via comandos e perguntas contextuais.
+  - Controla estados de conversa com `ConversationHandler`.
+- **Serviços de negócio (`bot/services/`)**
+  - Regras para validar e salvar lançamentos.
+- **Camada de extração e transformação (`data/` + `etl/`)**
+  - Leitura de abas no Google Sheets.
+  - Padronização e tipagem de datas/valores para análise.
+- **Dashboard (`app.py`)**
+  - Visualização por páginas: Rendimentos, Investimentos e Gastos.
+  - Filtros por período e instituição, além de área de planejamento financeiro.
 
 ---
 
-## 🚀 Funcionalidades e Fluxos do Bot
+## 🔄 Fluxo funcional da aplicação
 
-O bot utiliza lógica condicional para garantir que apenas os dados necessários sejam coletados, otimizando a experiência do usuário:
+### 1) Registro pelo Telegram
 
-### 1. Gastos
-Fluxo padrão para controle de fluxo de caixa mensal.
-* **Perguntas:** Valor ➡️ Categoria ➡️ Instituição ➡️ Descrição.
+O usuário inicia com `/registrar` e escolhe o tipo de lançamento:
 
-### 2. Investimentos
-Fluxo detalhado para acompanhamento de patrimônio.
-* **Perguntas:** Valor ➡️ Produto (ex: CDB) ➡️ Tipo (Aplicação/Retirada) ➡️ Vencimento ➡️ Indicador (ex: CDI) ➡️ Instituição.
+- **Gastos:** valor → categoria → instituição → descrição.
+- **Investimentos:** valor → produto → tipo (Aplicação/Retirada) → vencimento → indicador/taxa → instituição.
+- **Receita:** valor → descrição → instituição.
+- **Rendimentos:** valor → data início → data fim → instituição.
 
-### 3. Receita
-Fluxo expresso para ganhos rápidos.
-* **Perguntas:** Valor ➡️ Instituição ➡️ Descrição.
+Ao final, o bot resume os dados e salva na planilha associada ao usuário.
 
-### 4. Rendimentos
-Fluxo para registro de rendimentos de investimentos realizados.
-* **Perguntas:** Valor ➡️ Data Início ➡️ Data Fim
+### 2) Consulta pelo Telegram
+
+Com `/consultar`, o usuário solicita resumos (como gastos, total investido e saldos) com base nos dados registrados.
+
+### 3) Transformação e consumo no Streamlit
+
+Ao acessar o dashboard:
+
+- A aplicação autentica o usuário.
+- Resolve o `sheet_id` correspondente.
+- Executa o pipeline `FinanceDataPipeline` para:
+  - Converter valores monetários para numérico.
+  - Padronizar e converter datas.
+  - Criar campos derivados (ex.: mês de referência, tipo composto de investimento).
+- Exibe visões analíticas para acompanhamento financeiro.
 
 ---
 
-## 🛠️ Configuração
+## 📊 Funcionalidades do dashboard
 
-### Pré-requisitos
-* Python 3.10 ou superior.
-* Uma conta no Google Cloud com a **Google Sheets API** e **Google Drive API** ativas.
-* Arquivo de credenciais (`credentials.json`) da conta de serviço.
+### 📈 Rendimentos
 
-### Variáveis de Ambiente (Streamlit Secrets)
-Para rodar no Streamlit Cloud ou localmente, configure o arquivo `.streamlit/secrets.toml`:
+- Tabela de rendimentos com período.
+- Série temporal por data de fim.
+
+### 🏦 Investimentos
+
+- Lista de investimentos com valor e vencimento.
+- Gráfico de distribuição por tipo/produto.
+
+### 💸 Gastos
+
+- Filtro por mês e recorte “mês inteiro” ou “até o dia atual”.
+- Cards por instituição com:
+  - Receitas
+  - Despesas
+  - Saldo
+  - Total investido
+- Gráfico de pizza por categoria de despesa.
+- Área de planejamento com objetivos mensais e distribuição da sobra.
+
+---
+
+## 🧰 Stack utilizada
+
+- **Python**
+- **Streamlit** (dashboard)
+- **python-telegram-bot** (bot)
+- **Pandas** (tratamento de dados)
+- **Plotly** (visualizações)
+- **Google Sheets API / Google Drive API**
+- **PostgreSQL** (opcional, camada bronze)
+- **Docker / Docker Compose**
+
+---
+
+## 📁 Estrutura de pastas
+
+```bash
+.
+├── app.py                        # Dashboard Streamlit
+├── main.py                       # Ponto de entrada do bot
+├── bot/
+│   ├── bot.py                    # Configuração do Application e ConversationHandler
+│   ├── handlers/
+│   │   ├── registration.py       # Fluxos de registro financeiro
+│   │   ├── inquiry.py            # Fluxos de consulta
+│   │   └── common.py             # Comandos comuns (ex.: cancelar)
+│   └── services/
+│       ├── finance_service.py    # Regras de persistência de registros
+│       ├── constants.py          # Estados e constantes do bot
+│       └── utils.py              # Utilitários do bot
+├── config/
+│   ├── auth.py                   # Autenticação no app Streamlit
+│   └── sheets.py                 # Resolução de sheet_id por usuário
+├── data/
+│   ├── extract.py                # Extração de dados do Google Sheets
+│   └── bronze_postgres.py        # Persistência opcional da camada bronze
+├── etl/
+│   └── transform.py              # Pipeline de transformação (FinanceDataPipeline)
+├── services/
+│   ├── utils.py                  # Funções utilitárias de cálculo e normalização
+│   └── calc_investimentos.py     # Cálculos auxiliares de investimentos
+├── images/
+│   ├── diagram_app_finance.png   # Diagrama de arquitetura
+│   └── *_logo.png                # Logos usados na interface
+├── docker-compose.yml
+├── Dockerfile
+└── requirements.txt
+```
+
+---
+
+## ✅ Pré-requisitos
+
+- Python **3.10+**
+- Conta Google Cloud com:
+  - **Google Sheets API** habilitada
+  - **Google Drive API** habilitada
+- Credenciais de conta de serviço
+- Token de bot do Telegram
+
+---
+
+## 🔐 Configuração de segredos
+
+Crie `.streamlit/secrets.toml` com os valores reais:
 
 ```toml
-bot_token = "SEU_TOKEN_DO_BOT_AQUI"
-SHEET_ID = "ID_DA_SUA_PLANILHA_GOOGLE"
+bot_token = "SEU_TOKEN_DO_BOT"
+SHEET_ID = "ID_DA_PLANILHA_PADRAO"
 
 [gcp_service_account]
 type = "service_account"
@@ -63,78 +190,79 @@ token_uri = ""
 auth_provider_x509_cert_url = ""
 client_x509_cert_url = ""
 universe_domain = "googleapis.com"
+
+[auth.credentials.usernames.seu_usuario]
+name = "Seu Nome"
+password = "HASH_OU_VALOR_CONFIGURADO"
+sheet_id = "ID_DA_PLANILHA_DO_USUARIO"
 ```
---
 
+> Observação: o projeto pode trabalhar com `SHEET_ID` padrão e também com `sheet_id` específico por usuário autenticado.
 
-## 🐳 Rodando o bot com Docker (local)
+---
 
-### 1) Crie o arquivo de segredo
-Crie o arquivo `.streamlit/secrets.toml` com o token do bot, o `SHEET_ID` e as credenciais da conta de serviço (mesmo formato da seção de configuração acima).
+## ▶️ Como executar
 
-### 2) Suba o container do bot
-Com Docker e Docker Compose instalados, execute:
+### Execução local (Python)
+
+1. Instale as dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Rode o bot:
+
+```bash
+python main.py
+```
+
+3. Rode o dashboard:
+
+```bash
+streamlit run app.py
+```
+
+### Execução com Docker
+
+Subir apenas o bot:
 
 ```bash
 docker compose up --build bot
 ```
 
-O container inicia com o comando `python main.py`, que executa o Telegram bot em modo polling.
+Subir bot + Postgres (bronze):
 
-### 3) Rodar em background
-Se quiser deixar em segundo plano:
+```bash
+docker compose up --build
+```
+
+Rodar em background:
 
 ```bash
 docker compose up -d --build bot
 ```
 
-Para acompanhar logs:
+Ver logs:
 
 ```bash
 docker compose logs -f bot
 ```
 
-Para parar:
+Parar tudo:
 
 ```bash
 docker compose down
 ```
 
-> Observação: o arquivo de segredos é montado em modo somente leitura (`/app/.streamlit/secrets.toml`) e **não** é incluído na imagem.
+---
+
+## 🤖 Comandos do bot
+
+- `/registrar` → inicia novo lançamento financeiro.
+- `/consultar` → inicia fluxo de consulta.
+- `/cancelar` → interrompe a conversa atual e limpa dados temporários.
 
 ---
 
-## 📂 Estrutura de Pastas
-
-
-```
-├── bot/
-│   └── handlers/
-│       └── common.py               # Máquina de estados para a função 'cancelar'
-│       └── inquiry.py              # Máquina de estados para a função 'consultar'
-│       └── registration.py         # Máquina de estados para a função 'registrar'
-│   └── services/
-│       └── constants.py            # Constantes utilizadas na lógica dos comandos do bot
-│       └── finance_service.py      # Service para utilziar classes
-│       └── utils.py                # Funções de uso comum
-│   └── bot.py                      # Lógica da interface e máquina de estados
-├── config/
-│   └── auth.py                     # Autorização para acessar o Google Sheets
-├── etl/
-│   └── transform.py                # Lógica para transformação dos dados
-├── data/
-│   └── extract.py                  # Funções de integração (ETL/Load)
-├── images/
-|   └── Imagens Bancos
-│   └── Minhas_Finanças_App.drawio  # Diagrama da arquitetura
-├── .streamlit/
-│   └── secrets.toml                # Configurações sensíveis (não versionar!)
-└── requirements.txt                # Dependências do projeto
-```
-
-## 📝 Comandos Bot
-* /registrar: Inicia um novo lançamento financeiro.
-
-* /cancelar: Interrompe o fluxo atual e limpa os dados temporários.
-
-* /consultar: Inicia um fluxo para consultar um resumo dos dados salvos.
+## 🚧 Limitações atuais e próximos passos

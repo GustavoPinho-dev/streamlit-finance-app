@@ -138,17 +138,17 @@ def get_data_resumo(df: pd.DataFrame, instituicao: str):
   }
 
 def padronizar_string(texto: str) -> str:
-    if texto is None:
-        return None
+  if texto is None:
+    return None
 
-    # Normaliza para separar letras de acentos
-    texto_normalizado = unicodedata.normalize('NFD', texto)
+  # Normaliza para separar letras de acentos
+  texto_normalizado = unicodedata.normalize('NFD', texto)
 
-    # Remove os acentos
-    texto_sem_acentos = ''.join(
-        char for char in texto_normalizado
-        if unicodedata.category(char) != 'Mn'
-    )
+  # Remove os acentos
+  texto_sem_acentos = ''.join(
+    char for char in texto_normalizado
+    if unicodedata.category(char) != 'Mn'
+  )
 
-    # Converte para uppercase
-    return texto_sem_acentos.upper()
+  # Converte para uppercase
+  return texto_sem_acentos.upper()
