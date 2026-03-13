@@ -186,19 +186,22 @@ if st.session_state["authentication_status"]:
     with tab_resumo:
       for i in instituicoes:
         data_resumo = get_data_resumo(df_filtro, i)
+        dados_acumulados = get_data_resumo(df_gastos, i)
+        reserva_disponivel = dados_acumulados['Receita Total'] - (dados_acumulados['Gastos'] + dados_acumulados["Total Investido"])
 
-        print(f'Dados de resumo retornados: {data_resumo}')
+        print(f'Dados de reserva retornados: {reserva_disponivel:,.2f}')
 
         with st.container(border=True):
           st.image(f"images/{padronizar_string(i)}_logo.png", width=70)
 
-          col1, col2 = st.columns(2)
-          col3, col4 = st.columns(2)
+          col_receita, col_despesas, col_reserva = st.columns(3)
+          col_saldo, col_total_investido, col_vazia = st.columns(3)
 
-          col1.metric("Receitas", f"R$ {data_resumo['Receita Total']:,.2f}")
-          col2.metric("Despesas", f"R$ {data_resumo['Gastos']:,.2f}")
-          col3.metric("Saldo", f"R$ {data_resumo['Saldo Conta']:,.2f}")
-          col4.metric("Total Investido", f"R$ {data_resumo['Total Investido']:,.2f}")
+          col_receita.metric("Receitas", f"R$ {data_resumo['Receita Total']:,.2f}")
+          col_despesas.metric("Despesas", f"R$ {data_resumo['Gastos']:,.2f}")
+          col_saldo.metric("Saldo", f"R$ {data_resumo['Saldo Conta']:,.2f}")
+          col_total_investido.metric("Total Investido", f"R$ {data_resumo['Total Investido']:,.2f}")
+          col_reserva.metric("Reserva disponível", f"R$ {reserva_disponivel:,.2f}")
 
     # 🔹 DIVISÃO DE GASTOS
     with tab_div:
