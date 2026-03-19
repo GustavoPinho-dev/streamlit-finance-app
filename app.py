@@ -49,6 +49,7 @@ if st.session_state["authentication_status"]:
   df = st.session_state[dados_key]["rendimentos"]
   df_inv = st.session_state[dados_key]["investimentos"]
   df_gastos = st.session_state[dados_key]["gastos"]
+  df_plan_salvo = st.session_state[dados_key].get("planejamento", pd.DataFrame())
 
   # ==============================
   # MENU LATERAL
@@ -70,6 +71,7 @@ if st.session_state["authentication_status"]:
         "📈 Rendimentos",
         "🏦 Investimentos",
         "💸 Gastos",
+        "📋 Planejamento",
       ]
     )
 
@@ -178,8 +180,8 @@ if st.session_state["authentication_status"]:
     # ------------------------------
     # TABS
     # ------------------------------
-    tab_resumo, tab_div, tab_plan = st.tabs(
-      ["Resumo Mensal", "Divisão", "Planejamento"]
+    tab_resumo, tab_div = st.tabs(
+      ["Resumo Mensal", "Divisão"]
     )
 
     # 🔹 RESUMO MENSAL
@@ -232,55 +234,288 @@ if st.session_state["authentication_status"]:
         }
       )
 
-    # 🔹 PLANEJAMENTO
-    with tab_plan:
-      col_plan_renda, col_plan_despesa = st.columns(2)
-      col_plan_invest, col_plan_sobra = st.columns(2)
+  # ==============================
+  # 📋 PLANEJAMENTO (página dedicada)
+  # ==============================
+  elif pagina == "📋 Planejamento":
+    st.header("📋 Planejamento Mensal")
 
-      renda = col_plan_renda.number_input("Renda Mensal", value=float(data_resumo['Receita Total']))
-      despesa = col_plan_despesa.number_input("Despesa Mensal", value=float(data_resumo['Gastos']))
-      invest = col_plan_invest.number_input("Valor Investido", value=float(data_resumo['Total Investido']))
+    # ── Inicializa estado das alocações ──────────────────────────────────────
+    if "plan_alocacoes" not in st.session_state:
+      st.session_state.plan_alocacoes = [
+        {"categoria": "Contas / Despesas", "valor": 0.0},
+        {"categoria": "Investimentos",      "valor": 0.0},
+        {"categoria": "Reserva / Poupança", "valor": 0.0},
+      ]
 
-      sobra = renda - (despesa + invest)
-      col_plan_sobra.metric("Valor disponível", f"R$ {sobra:,.2f}")
+    # ── SIDEBAR: seleção de mês (apenas mês atual e próximo) ─────────────────
+    mes_atual  = pd.Period(pd.Timestamp.today(), "M")
+    mes_proximo = mes_atual + 1
 
-      if "objetivos" not in st.session_state:
-        st.session_state.objetivos = []
+    opcoes_mes = {
+      mes_atual.strftime("%m/%Y"):   mes_atual,
+      mes_proximo.strftime("%m/%Y"): mes_proximo,
+    }
 
-      with st.form("form_objetivos"):
-        nome = st.text_input("Objetivo")
-        valor = st.number_input("Valor mensal", min_value=0.0)
-        prazo = st.number_input("Prazo (meses)", min_value=1, step=1)
+    with st.sidebar:
+      st.subheader("Filtros")
+      mes_label = st.radio(
+        "Mês de referência",
+        list(opcoes_mes.keys()),
+        format_func=lambda x: f"{'Este mês' if x == mes_atual.strftime('%m/%Y') else 'Próximo mês'} ({x})",
+        key="plan_mes_sel"
+      )
+      mes_periodo = opcoes_mes[mes_label]
+      mes_str = mes_periodo.strftime("%m/%Y")   # "MM/YYYY" — chave no Sheets
 
-        submitted = st.form_submit_button("Adicionar")
+    # ── Receita base ─────────────────────────────────────────────────────────
+    # Para o mês atual: soma das receitas do próprio mês no Sheets.
+    # Para o próximo mês: usa a soma do mês atual como estimativa (melhor proxy disponível).
+    receita_mes = 0.0
+    if not df.empty and "Data Fim" in df.columns and "Rendimento" in df.columns:
+      mask_atual = pd.to_datetime(df["Data Fim"]).dt.to_period("M") == mes_atual
+      receita_mes_atual = float(df.loc[mask_atual, "Rendimento"].sum())
 
-        if submitted and nome:
-          st.session_state["objetivos"].append({
-              "Objetivo": nome,
-              "Valor mensal": valor,
-              "Prazo": prazo,
-              "Total": valor * prazo
-          })
+      if mes_periodo == mes_atual:
+        receita_mes = receita_mes_atual
+      else:
+        # Próximo mês: sem receitas reais ainda → replica o mês atual
+        receita_mes = receita_mes_atual
 
-      if st.session_state.objetivos:
-        df_plan = pd.DataFrame(st.session_state.objetivos)
+    # Carrega planejamento existente para o mês (se houver)
+    plan_existente = pd.DataFrame()
+    if not df_plan_salvo.empty and "Mês" in df_plan_salvo.columns:
+      plan_existente = df_plan_salvo[df_plan_salvo["Mês"] == mes_str].copy()
 
+    # Pré-carrega alocações salvas ao mudar de mês
+    plan_mes_key = f"plan_loaded_{mes_str}"
+    if not plan_existente.empty and plan_mes_key not in st.session_state:
+      receita_salva = float(plan_existente.iloc[0]["Receita"]) if "Receita" in plan_existente.columns else receita_mes
+      receita_mes = receita_salva
+      st.session_state.plan_alocacoes = [
+        {
+          "categoria": row["Categoria"],
+          "valor": float(row["Valor"]) if "Valor" in plan_existente.columns else round(float(row["Percentual"]) / 100 * receita_salva, 2)
+        }
+        for _, row in plan_existente.iterrows()
+      ]
+      st.session_state[plan_mes_key] = True
+
+    # ── Layout principal: duas colunas ────────────────────────────────────────
+    col_form, col_preview = st.columns([1, 1], gap="large")
+
+    with col_form:
+      st.subheader(f"Configurar alocações — {mes_str}")
+
+      receita_input = st.number_input(
+        "💵 Receita do mês (R$)",
+        min_value=0.0,
+        value=receita_mes,
+        step=100.0,
+        format="%.2f",
+        key="plan_receita"
+      )
+      if mes_periodo == mes_proximo:
+        st.caption("📌 Estimativa baseada nas receitas do mês atual. Ajuste conforme necessário.")
+
+      st.divider()
+      st.markdown("**Categorias e valores**")
+
+      # Renderiza campos para cada alocação existente
+      alocacoes_atuais = st.session_state.plan_alocacoes
+      alocacoes_novas = []
+      indices_remover = []
+
+      for idx, aloc in enumerate(alocacoes_atuais):
+        c1, c2, c3, c4 = st.columns([3, 2, 1, 1])
+        cat = c1.text_input(
+          "Categoria",
+          value=aloc["categoria"],
+          key=f"plan_cat_{idx}",
+          label_visibility="collapsed",
+          placeholder="Nome da categoria"
+        )
+        val = c2.number_input(
+          "R$ ",
+          min_value=0.0,
+          value=float(aloc.get("valor", 0.0)),
+          step=50.0,
+          format="%.2f",
+          key=f"plan_val_{idx}",
+          label_visibility="collapsed"
+        )
+        # Percentual calculado dinamicamente
+        pct_calc = (val / receita_input * 100) if receita_input > 0 else 0.0
+        c3.markdown(f"<div style='padding-top:8px; color: gray; font-size:0.85rem'>{pct_calc:.1f}%</div>", unsafe_allow_html=True)
+
+        remover = c4.button("✕", key=f"plan_rm_{idx}", help="Remover categoria")
+        if remover:
+          indices_remover.append(idx)
+        else:
+          alocacoes_novas.append({"categoria": cat, "valor": val})
+
+      # Aplica remoções
+      if indices_remover:
+        st.session_state.plan_alocacoes = alocacoes_novas
+        st.rerun()
+
+      # Botão para adicionar nova categoria
+      if st.button("➕ Adicionar categoria"):
+        st.session_state.plan_alocacoes.append({"categoria": "Nova categoria", "valor": 0.0})
+        st.rerun()
+
+      # Validação: soma dos valores vs receita
+      total_val = sum(a["valor"] for a in alocacoes_novas)
+      total_pct = (total_val / receita_input * 100) if receita_input > 0 else 0.0
+      restante = receita_input - total_val
+
+      if alocacoes_novas:
+        if abs(restante) < 0.01:
+          st.success(f"✅ Total alocado: R$ {total_val:,.2f} (100%)")
+        elif restante > 0:
+          st.warning(f"⚠️ Faltam R$ {restante:,.2f} ({100 - total_pct:.1f}%) para alocar")
+        else:
+          st.error(f"⚠️ Excedeu em R$ {abs(restante):,.2f} ({total_pct:.1f}% da receita)")
+
+      st.divider()
+
+      # ── Botão Salvar ──────────────────────────────────────────────────────
+      salvar_disabled = abs(restante) >= 0.01 or not alocacoes_novas
+      if st.button(
+        "💾 Salvar Planejamento",
+        type="primary",
+        disabled=salvar_disabled,
+        use_container_width=True
+      ):
+        st.session_state.plan_alocacoes = alocacoes_novas
+
+        alocacoes_payload = [
+          {
+            "categoria": a["categoria"],
+            "percentual": round(a["valor"] / receita_input * 100, 2) if receita_input > 0 else 0.0,
+            "valor": round(a["valor"], 2)
+          }
+          for a in alocacoes_novas
+        ]
+
+        try:
+          pipeline = FinanceDataPipeline(
+            sheet_id=sheet_id,
+            credentials_dict=st.secrets["gcp_service_account"]
+          )
+          pipeline.extractor.save_planejamento(
+            mes=mes_str,
+            receita=receita_input,
+            alocacoes=alocacoes_payload
+          )
+
+          # Invalida cache para recarregar planejamento atualizado
+          del st.session_state[dados_key]
+          if plan_mes_key in st.session_state:
+            del st.session_state[plan_mes_key]
+
+          st.success(f"Planejamento de {mes_str} salvo com sucesso! 🎉")
+          st.rerun()
+
+        except GoogleSheetsReadError as e:
+          st.error("Erro ao salvar o planejamento na planilha.")
+          st.exception(e)
+
+    # ── Preview / Visualização ────────────────────────────────────────────────
+    with col_preview:
+      st.subheader("Prévia")
+
+      # Monta lista de alocações com valores calculados
+      alocacoes_preview = [
+        {
+          "Categoria": a["categoria"],
+          "Valor (R$)": round(a["valor"], 2),
+          "Percentual (%)": round(a["valor"] / receita_input * 100, 1) if receita_input > 0 else 0.0,
+        }
+        for a in alocacoes_novas
+        if a["categoria"].strip()
+      ]
+
+      if alocacoes_preview:
+        df_preview = pd.DataFrame(alocacoes_preview)
+
+        # Métricas rápidas
+        cols_metric = st.columns(min(len(alocacoes_preview), 3))
+        for i, row in df_preview.iterrows():
+          cols_metric[i % len(cols_metric)].metric(
+            label=row["Categoria"],
+            value=f"R$ {row['Valor (R$)']:,.2f}",
+            delta=f"{row['Percentual (%)']:.1f}%"
+          )
+
+        st.divider()
+
+        # Tabela resumo
         st.dataframe(
-          df_plan,
+          df_preview,
           hide_index=True,
+          use_container_width=True,
           column_config={
-            "Valor mensal": st.column_config.NumberColumn(format="R$ %f"),
-            "Total": st.column_config.NumberColumn(format="R$ %f")
+            "Percentual (%)": st.column_config.NumberColumn(format="%.1f %%"),
+            "Valor (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
           }
         )
 
-        fig = px.pie(
-          df_plan,
-          values="Valor mensal",
-          names="Objetivo",
-          title="Distribuição da sobra"
+        # Gráfico de pizza
+        if df_preview["Valor (R$)"].sum() > 0:
+          fig = px.pie(
+            df_preview,
+            values="Valor (R$)",
+            names="Categoria",
+            title=f"Distribuição — {mes_str}",
+            hole=0.4,
+          )
+          fig.update_traces(textinfo="percent+label")
+          st.plotly_chart(fig, use_container_width=True)
+
+      else:
+        st.info("Adicione categorias ao planejamento para visualizar a prévia.")
+
+    # ── Histórico de planejamentos salvos ─────────────────────────────────────
+    if not df_plan_salvo.empty:
+      st.divider()
+      st.subheader("📂 Histórico de Planejamentos Salvos")
+
+      meses_salvos = df_plan_salvo["Mês"].unique() if "Mês" in df_plan_salvo.columns else []
+      if len(meses_salvos):
+        mes_hist = st.selectbox(
+          "Visualizar planejamento do mês",
+          sorted(meses_salvos, reverse=True),
+          key="plan_hist_mes"
         )
-        st.plotly_chart(fig)
+        df_hist = df_plan_salvo[df_plan_salvo["Mês"] == mes_hist].copy()
+
+        if not df_hist.empty:
+          receita_hist = float(df_hist.iloc[0]["Receita"]) if "Receita" in df_hist.columns else 0.0
+          st.caption(f"Receita base: **R$ {receita_hist:,.2f}**")
+
+          col_t, col_g = st.columns([1, 1])
+          with col_t:
+            st.dataframe(
+              df_hist[["Categoria", "Percentual", "Valor"]],
+              hide_index=True,
+              use_container_width=True,
+              column_config={
+                "Percentual": st.column_config.NumberColumn(format="%.1f %%"),
+                "Valor": st.column_config.NumberColumn(format="R$ %.2f"),
+              }
+            )
+          with col_g:
+            if df_hist["Valor"].sum() > 0:
+              fig_hist = px.pie(
+                df_hist,
+                values="Valor",
+                names="Categoria",
+                title=f"Planejamento — {mes_hist}",
+                hole=0.4,
+              )
+              st.plotly_chart(fig_hist, use_container_width=True)
+
 
 # ==============================
 # ERROS DE LOGIN

@@ -54,12 +54,29 @@ class FinanceDataPipeline:
       axis=1
     )
     return df
+
+  def _transform_planejamento(self, df: pd.DataFrame) -> pd.DataFrame:
+    """Normaliza o DataFrame de planejamento lido do Sheets."""
+    if df.empty:
+      return df
+    if "Percentual" in df.columns:
+      df["Percentual"] = pd.to_numeric(df["Percentual"], errors="coerce").fillna(0)
+    if "Valor" in df.columns:
+      df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce").fillna(0)
+    if "Receita" in df.columns:
+      df["Receita"] = pd.to_numeric(df["Receita"], errors="coerce").fillna(0)
+    return df
   
   def run(self):
     """Executa o pipeline completo (Extract -> Transform)"""
     raw_rend = self._extract("Rendimentos")
     raw_inv = self._extract("Investimentos")
     raw_gastos = self._extract("Gastos")
+
+    try:
+      raw_plan = self.extractor.load_planejamento()
+    except Exception:
+      raw_plan = pd.DataFrame()
 
     is_valid_rend, error_rend = validate_dataset(raw_rend, "Rendimentos") if not raw_rend.empty else (True, None)
     is_valid_inv, error_inv = validate_dataset(raw_inv, "Investimentos") if not raw_inv.empty else (True, None)
@@ -68,5 +85,6 @@ class FinanceDataPipeline:
     return {
       "rendimentos": self._transform_rendimentos(raw_rend) if is_valid_rend else build_empty_with_error("Rendimentos", error_rend),
       "investimentos": self._transform_inv(raw_inv) if is_valid_inv else build_empty_with_error("Investimentos", error_inv),
-      "gastos": self._transform_gastos(raw_gastos) if is_valid_gastos else build_empty_with_error("Gastos", error_gastos)
+      "gastos": self._transform_gastos(raw_gastos) if is_valid_gastos else build_empty_with_error("Gastos", error_gastos),
+      "planejamento": self._transform_planejamento(raw_plan),
     }
