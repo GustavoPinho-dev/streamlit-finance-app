@@ -82,8 +82,16 @@ class GoogleSheetsExtractor:
     try:
       sheet = self.client.open_by_key(self.sheet_id)
       ws = self._ensure_planejamento_tab(sheet)
-      data = ws.get_all_records()
-      return pd.DataFrame(data) if data else pd.DataFrame(columns=self.PLANEJAMENTO_HEADERS)
+      rows = ws.get_all_values()
+      if not rows:
+        return pd.DataFrame(columns=self.PLANEJAMENTO_HEADERS)
+
+      headers = rows[0]
+      data_rows = rows[1:]
+      if not data_rows:
+        return pd.DataFrame(columns=headers or self.PLANEJAMENTO_HEADERS)
+
+      return pd.DataFrame(data_rows, columns=headers)
     except GoogleSheetsReadError:
       raise
     except Exception as e:

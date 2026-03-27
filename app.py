@@ -109,6 +109,8 @@ if st.session_state["authentication_status"]:
   elif pagina == "🏦 Investimentos":
     st.header("🏦 Investimentos")
 
+    print(df_inv)
+
     tab_lista, tab_div = st.tabs(["Lista", "Distribuição"])
 
     with tab_lista:
@@ -142,8 +144,6 @@ if st.session_state["authentication_status"]:
   # ==============================
   elif pagina == "💸 Gastos":
     st.header("💸 Gastos")
-
-    print(f'DataFrame Gastos: {df_gastos}')
 
     # Instituições
     instituicoes = pd.unique(df_gastos["Instituição"])
@@ -190,8 +190,6 @@ if st.session_state["authentication_status"]:
         data_resumo = get_data_resumo(df_filtro, i)
         dados_acumulados = get_data_resumo(df_gastos, i)
         reserva_disponivel = dados_acumulados['Receita Total'] - (dados_acumulados['Gastos'] + dados_acumulados["Total Investido"])
-
-        print(f'Dados de reserva retornados: {reserva_disponivel:,.2f}')
 
         with st.container(border=True):
           st.image(f"images/{padronizar_string(i)}_logo.png", width=70)

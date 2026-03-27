@@ -59,12 +59,44 @@ class FinanceDataPipeline:
     """Normaliza o DataFrame de planejamento lido do Sheets."""
     if df.empty:
       return df
-    if "Percentual" in df.columns:
-      df["Percentual"] = pd.to_numeric(df["Percentual"], errors="coerce").fillna(0)
-    if "Valor" in df.columns:
-      df["Valor"] = pd.to_numeric(df["Valor"], errors="coerce").fillna(0)
+
+    def _parse_decimal_br(value):
+      """Converte textos numéricos pt-BR/us para float (ex.: 5.062,31 / 5062.31 / 41,48%)."""
+      if pd.isna(value):
+        return 0.0
+
+      if isinstance(value, (int, float)):
+        return float(value)
+
+      text = str(value).strip()
+      if not text:
+        return 0.0
+
+      is_percent = "%" in text
+      text = text.replace("%", "").replace("R$", "").replace(" ", "")
+
+      if "," in text and "." in text:
+        text = text.replace(".", "").replace(",", ".")
+      elif "," in text:
+        text = text.replace(",", ".")
+
+      number = pd.to_numeric(text, errors="coerce")
+      if pd.isna(number):
+        return 0.0
+
+      number = float(number)
+      if is_percent and number <= 1:
+        # Caso venha do Sheets como fração (0.4148), convertemos para 41.48.
+        return number * 100
+      return number
+
     if "Receita" in df.columns:
-      df["Receita"] = pd.to_numeric(df["Receita"], errors="coerce").fillna(0)
+      df["Receita"] = df["Receita"].apply(_parse_decimal_br)
+    if "Valor" in df.columns:
+      df["Valor"] = df["Valor"].apply(_parse_decimal_br)
+    if "Percentual" in df.columns:
+      df["Percentual"] = df["Percentual"].apply(_parse_decimal_br)
+
     return df
   
   def run(self):
