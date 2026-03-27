@@ -41,6 +41,9 @@ class FinanceDataPipeline:
 
   def _transform_inv(self, df: pd.DataFrame) -> pd.DataFrame:
     if df.empty: return df
+    if "Operação" not in df.columns and "Tipo" in df.columns:
+      df = df.rename(columns={"Tipo": "Operação"})
+    
     is_valid, error_payload = validate_dataset(df, "Investimentos")
     if not is_valid:
       return build_empty_with_error("Investimentos", error_payload)
@@ -52,6 +55,12 @@ class FinanceDataPipeline:
       lambda r: f"{r['Produto']} - {r['Indicador']}"
       if pd.notnull(r.get("Indicador")) else str(r.get("Produto", "N/A")),
       axis=1
+    )
+    df["Operação"] = (
+      df["Operação"]
+      .astype(str)
+      .str.strip()
+      .str.title()
     )
     return df
 

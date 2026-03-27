@@ -77,10 +77,10 @@ def format_data_bot(data_bot: dict) -> list:
     ]
       
   elif tipo_entrada == "Investimentos":
-    # Estrutura: Produto, Tipo, Vencimento, Valor, Indicador, Instituição
+    # Estrutura: Produto, Operação, Vencimento, Valor, Indicador, Instituição
     data_to_save = [
       data_bot.get('produto', ''),         # Produto
-      data_bot.get('tipo_invest', ''),     # Tipo (Ex: Aplicação)
+      data_bot.get('tipo_invest', ''),     # Operação (Ex: Aplicação)
       data_bot.get('vencimento', ''),      # Vencimento
       valor_padronizado,                              # Valor
       data_bot.get('indicador', ''),       # Indicador (Ex: SELIC)

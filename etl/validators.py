@@ -16,11 +16,11 @@ DATASET_CONTRACTS = {
     "expected_columns": ["Data", "Descrição", "Categoria", "Tipo", "Valor", "Instituição", "Mês"],
   },
   "Investimentos": {
-    "required_columns": ["Produto", "Tipo", "Vencimento", "Valor", "Indicador", "Instituição"],
-    "mandatory_fields": ["Produto", "Tipo", "Valor", "Instituição"],
+    "required_columns": ["Produto", "Operação", "Vencimento", "Valor", "Indicador", "Instituição"],
+    "mandatory_fields": ["Produto", "Operação", "Valor", "Instituição"],
     "numeric_non_negative": ["Valor"],
     "date_columns": ["Vencimento"],
-    "expected_columns": ["Produto", "Tipo", "Vencimento", "Valor", "Indicador", "Instituição"],
+    "expected_columns": ["Produto", "Operação", "Vencimento", "Valor", "Indicador", "Instituição"],
   },
   "Rendimentos": {
     "required_columns": ["Data Inicio", "Data Fim", "Rendimento", "Instituição"],
@@ -82,6 +82,9 @@ def _to_numeric_series(series: pd.Series) -> pd.Series:
 
 
 def validate_dataset(df: pd.DataFrame, dataset: str) -> tuple[bool, Optional[dict[str, Any]]]:
+  if dataset == "Investimentos" and "Operação" not in df.columns and "Tipo" in df.columns:
+    df = df.rename(columns={"Tipo": "Operação"})
+
   contract = DATASET_CONTRACTS[dataset]
   required_columns = contract["required_columns"]
 
