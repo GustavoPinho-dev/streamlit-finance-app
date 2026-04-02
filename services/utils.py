@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import datetime
 import unicodedata
+import re
 from bot.services.logger import get_logger
 
 
