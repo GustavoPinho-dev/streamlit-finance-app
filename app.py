@@ -84,6 +84,9 @@ if st.session_state["authentication_status"]:
     tab_dados, tab_hist = st.tabs(["Dados", "Histórico"])
 
     with tab_dados:
+      st.write(df[["Rendimento"]].head())
+      st.write(df["Rendimento"].dtype, df["Rendimento"].isna().sum())
+
       if not df.empty:
         st.dataframe(
           df,
