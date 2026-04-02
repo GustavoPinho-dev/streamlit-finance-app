@@ -146,7 +146,15 @@ class GoogleSheetsExtractor:
 
       # Monta e insere as novas linhas
       new_rows = [
-        [mes, receita, a["categoria"], a["percentual"], round(a["valor"], 2)]
+        [
+          mes,
+          receita,
+          a["categoria"],
+          # A coluna no Sheets costuma estar formatada como percentual.
+          # Nesse caso, precisamos salvar como fração (0.446) para exibir 44,6%.
+          round(a["percentual"] / 100, 6),
+          round(a["valor"], 2)
+        ]
         for a in alocacoes
       ]
       if new_rows:
