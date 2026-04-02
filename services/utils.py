@@ -1,6 +1,10 @@
 import pandas as pd
 from datetime import datetime
 import unicodedata
+from bot.services.logger import get_logger
+
+
+logger = get_logger(__name__)
 
 
 def padronizar_valor_recebido(valor) -> str:
@@ -38,6 +42,7 @@ def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
   for col in df.columns:
     # Verifica se o nome da coluna (ou parte dele) está na nossa lista alvo
     if any(alvo in col for alvo in colunas_financeiras):
+      amostra_original = df[col].head(5).tolist()
       if df[col].dtype == object:
         df[col] = (
           df[col]
@@ -50,9 +55,18 @@ def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
         
       # Converte para numérico, tratando erros caso a célula esteja vazia
       df[col] = pd.to_numeric(df[col], errors='coerce')
+      total_nulos = int(df[col].isna().sum())
+      if total_nulos > 0:
+        logger.warning(
+          "Conversão numérica da coluna '%s' gerou %s valores nulos. Amostra original: %s",
+          col,
+          total_nulos,
+          amostra_original
+        )
+      else:
+        logger.info("Conversão numérica da coluna '%s' concluída sem nulos.", col)
 
   return df
-
 # Formata dados recebidos pelo bot para salvar na planilha
 def format_data_bot(data_bot: dict) -> list:
   # 1. Identifica o tipo de entrada

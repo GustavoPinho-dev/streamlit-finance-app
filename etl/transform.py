@@ -1,6 +1,10 @@
 import pandas as pd
-from data.extract import GoogleSheetsExtractor  # Importando a nova classe
+from data.extract import GoogleSheetsExtractor
 from services.utils import format_moeda_to_numeric
+from bot.services.logger import get_logger
+
+
+logger = get_logger(__name__)
 
 class FinanceDataPipeline:
   def __init__(self, sheet_id: str, credentials_dict: dict):
@@ -99,6 +103,7 @@ class FinanceDataPipeline:
   
   def run(self):
     """Executa o pipeline completo (Extract -> Transform)"""
+    logger.info("Iniciando pipeline financeiro para sheet_id=%s", self.sheet_id)
     raw_rend = self._extract("Rendimentos")
     raw_inv = self._extract("Investimentos")
     raw_gastos = self._extract("Gastos")
@@ -108,9 +113,17 @@ class FinanceDataPipeline:
     except Exception:
       raw_plan = pd.DataFrame()
 
-    return {
+    resultado = {
       "rendimentos": self._transform_rendimentos(raw_rend),
       "investimentos": self._transform_inv(raw_inv),
       "gastos": self._transform_gastos(raw_gastos),
       "planejamento": self._transform_planejamento(raw_plan),
     }
+    logger.info(
+      "Pipeline concluído. Linhas -> rendimentos=%s, investimentos=%s, gastos=%s, planejamento=%s",
+      len(resultado["rendimentos"]),
+      len(resultado["investimentos"]),
+      len(resultado["gastos"]),
+      len(resultado["planejamento"]),
+    )
+    return resultado

@@ -2,6 +2,10 @@ import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from services.utils import format_data_bot
+from bot.services.logger import get_logger
+
+
+logger = get_logger(__name__)
 
 
 class GoogleSheetsAuthError(Exception):
@@ -38,9 +42,17 @@ class GoogleSheetsExtractor:
       sheet = self.client.open_by_key(self.sheet_id)
       worksheet = sheet.worksheet(worksheet_name)
       data = worksheet.get_all_records()
-      return pd.DataFrame(data)
+      df = pd.DataFrame(data)
+      logger.info(
+        "Aba '%s' carregada com %s linhas e %s colunas.",
+        worksheet_name,
+        len(df),
+        len(df.columns)
+      )
+      return df
     except Exception as e:
-      raise GoogleSheetsReadError(f"Erro ao ler a aba {worksheet_name}.") from e
+      logger.exception("Erro ao ler a aba '%s'.", worksheet_name)
+      raise GoogleSheetsReadError(f"Erro ao ler a aba {worksheet_name}.") from e  
 
   def save_bot_data(self, data_bot: dict) -> bool:
     """Formata e salva os dados vindos do bot na aba correta."""

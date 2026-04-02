@@ -6,6 +6,18 @@ from config.sheets import get_sheet_id_for_user
 from services.utils import get_data_resumo, padronizar_string
 from etl.transform import FinanceDataPipeline
 from data.extract import GoogleSheetsAuthError, GoogleSheetsReadError
+from bot.services.logger import get_logger
+
+
+logger = get_logger(__name__)
+
+
+def _mask_sheet_id(sheet_id: str) -> str:
+  if not sheet_id:
+    return "<vazio>"
+  if len(sheet_id) <= 8:
+    return "***"
+  return f"{sheet_id[:4]}...{sheet_id[-4:]}"
 
 # ==============================
 # CONFIGURAÇÃO DA PÁGINA
@@ -37,19 +49,29 @@ if st.session_state["authentication_status"]:
         credentials_dict=st.secrets["gcp_service_account"]
       )
       st.session_state[dados_key] = pipeline.run()
+      logger.info("Dados carregados e salvos na sessão para cache_key=%s", dados_key)
     except GoogleSheetsAuthError as e:
       st.error("Falha na autenticação com Google Sheets. Verifique as credenciais.")
       st.exception(e)
+      logger.exception("Falha de autenticação no carregamento dos dados.")
       st.stop()
     except GoogleSheetsReadError as e:
       st.error("Não foi possível carregar os dados da planilha.")
       st.exception(e)
+      logger.exception("Falha de leitura no carregamento dos dados.")
       st.stop()
 
   df = st.session_state[dados_key]["rendimentos"]
   df_inv = st.session_state[dados_key]["investimentos"]
   df_gastos = st.session_state[dados_key]["gastos"]
   df_plan_salvo = st.session_state[dados_key]["planejamento"]
+  logger.info(
+    "DataFrames em sessão -> rendimentos=%s, investimentos=%s, gastos=%s, planejamento=%s",
+    len(df),
+    len(df_inv),
+    len(df_gastos),
+    len(df_plan_salvo)
+  )
 
   # ==============================
   # MENU LATERAL
@@ -84,9 +106,6 @@ if st.session_state["authentication_status"]:
     tab_dados, tab_hist = st.tabs(["Dados", "Histórico"])
 
     with tab_dados:
-      st.write(df[["Rendimento"]].head())
-      st.write(df["Rendimento"].dtype, df["Rendimento"].isna().sum())
-
       if not df.empty:
         st.dataframe(
           df,
