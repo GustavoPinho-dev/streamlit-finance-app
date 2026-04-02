@@ -6,6 +6,8 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+EMPTY_TEXT_VALUES = {"", "nan", "none", "null", "nat", "-", "--"}
+
 
 DATASET_CONTRACTS = {
   "Gastos": {
@@ -58,7 +60,8 @@ def _invalid_mandatory_rows(df: pd.DataFrame, mandatory_fields: list[str]) -> di
     series = df[col]
     invalid_mask = series.isna()
     if pd.api.types.is_object_dtype(series):
-      invalid_mask = invalid_mask | series.astype(str).str.strip().eq("")
+      normalized = series.astype(str).str.strip().str.lower()
+      invalid_mask = invalid_mask | normalized.isin(EMPTY_TEXT_VALUES)
 
     invalid_count = int(invalid_mask.sum())
     if invalid_count > 0:
@@ -80,6 +83,12 @@ def _to_numeric_series(series: pd.Series) -> pd.Series:
   )
   return pd.to_numeric(normalized, errors="coerce")
 
+def _empty_like_mask(series: pd.Series) -> pd.Series:
+  empty_mask = series.isna()
+  if pd.api.types.is_object_dtype(series):
+    normalized = series.astype(str).str.strip().str.lower()
+    empty_mask = empty_mask | normalized.isin(EMPTY_TEXT_VALUES)
+  return empty_mask
 
 def validate_dataset(df: pd.DataFrame, dataset: str) -> tuple[bool, Optional[dict[str, Any]]]:
   if dataset == "Investimentos" and "Operação" not in df.columns and "Tipo" in df.columns:
@@ -110,9 +119,7 @@ def validate_dataset(df: pd.DataFrame, dataset: str) -> tuple[bool, Optional[dic
 
   for date_col in contract["date_columns"]:
     raw_series = df[date_col]
-    empty_mask = raw_series.isna()
-    if pd.api.types.is_object_dtype(raw_series):
-      empty_mask = empty_mask | raw_series.astype(str).str.strip().eq("")
+    empty_mask = _empty_like_mask(raw_series)
 
     parsed = pd.to_datetime(raw_series, dayfirst=True, errors="coerce")
     invalid_dates = int((parsed.isna() & ~empty_mask).sum())
