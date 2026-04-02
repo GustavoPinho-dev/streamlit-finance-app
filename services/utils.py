@@ -43,18 +43,28 @@ def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
     # Verifica se o nome da coluna (ou parte dele) está na nossa lista alvo
     if any(alvo in col for alvo in colunas_financeiras):
       amostra_original = df[col].head(5).tolist()
-      if df[col].dtype == object:
-        df[col] = (
-          df[col]
-          .astype(str)
-          .str.replace("R$", "", regex=False)
-          .str.replace(".", "", regex=False)
-          .str.replace(",", ".", regex=False)
-          .str.strip()
-        )
-        
-      # Converte para numérico, tratando erros caso a célula esteja vazia
-      df[col] = pd.to_numeric(df[col], errors='coerce')
+      def _parse_currency(value):
+        if pd.isna(value):
+          return pd.NA
+
+        text = str(value).strip()
+        if not text:
+          return pd.NA
+
+        # Mantém apenas dígitos e separadores numéricos
+        text = re.sub(r"[^\d,.\-]", "", text)
+        if not text:
+          return pd.NA
+
+        # Trata formato pt-BR e en-US
+        if "," in text and "." in text:
+          text = text.replace(".", "").replace(",", ".")
+        elif "," in text:
+          text = text.replace(",", ".")
+
+        return pd.to_numeric(text, errors='coerce')
+
+      df[col] = df[col].apply(_parse_currency)
       total_nulos = int(df[col].isna().sum())
       if total_nulos > 0:
         logger.warning(
@@ -67,6 +77,7 @@ def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Conversão numérica da coluna '%s' concluída sem nulos.", col)
 
   return df
+
 # Formata dados recebidos pelo bot para salvar na planilha
 def format_data_bot(data_bot: dict) -> list:
   # 1. Identifica o tipo de entrada
