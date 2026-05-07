@@ -2,6 +2,7 @@
 venv/
 .venv/
 __pycache__/
+logs/
 service_account.json
 .streamlit/secrets.toml
 config.yaml
