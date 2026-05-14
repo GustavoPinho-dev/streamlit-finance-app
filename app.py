@@ -245,7 +245,7 @@ if st.session_state["authentication_status"]:
           col_saldo, col_total_investido, col_saldo_mes = st.columns(3)
 
           col_receita.metric("Receitas", f"R$ {data_resumo['Receita Total']:,.2f}")
-          col_despesas.metric("Despesas", f"R$ {data_resumo['Gastos']:,.2f}", help=f"{total_despesas:,.2f} (Contas)")
+          col_despesas.metric("Despesas", f"R$ {data_resumo['Gastos']:,.2f}", help=f"{total_despesas:,.2f} (Contas) + {(data_resumo['Gastos'] - total_despesas):,.2f} (Outros)")
           col_saldo.metric("Saldo em Conta", f"R$ {data_resumo['Saldo Conta']:,.2f}")
           col_total_investido.metric("Total Investido", f"R$ {data_resumo['Total Investido']:,.2f}")
           col_reserva.metric("Reserva Total Disponível", f"R$ {reserva_disponivel:,.2f}", f"{saldo_mes_disponivel:,.2f}")
