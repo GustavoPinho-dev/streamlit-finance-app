@@ -229,6 +229,14 @@ if st.session_state["authentication_status"]:
         dados_acumulados = get_data_resumo(df_gastos, i)
         reserva_disponivel = dados_acumulados['Receita Total'] - (dados_acumulados['Gastos'] + dados_acumulados["Total Investido"])
         saldo_mes_disponivel = data_resumo['Receita Total'] - (data_resumo['Gastos'] + data_resumo['Total Investido'])
+        despesas_contas = df_filtro[df_filtro['Categoria'].isin(['Contas - Fixo', 'Contas - Variável'])]
+
+        total_despesas = despesas_contas['Valor'].sum()
+        total_outros = (
+          df_filtro
+          .loc[~df_filtro['Categoria'].isin(['Contas - Fixo', 'Contas - Variável']), 'Valor']
+          .sum()
+        )
 
         with st.container(border=True):
           st.image(f"images/{padronizar_string(i)}_logo.png", width=70)
@@ -237,7 +245,7 @@ if st.session_state["authentication_status"]:
           col_saldo, col_total_investido, col_saldo_mes = st.columns(3)
 
           col_receita.metric("Receitas", f"R$ {data_resumo['Receita Total']:,.2f}")
-          col_despesas.metric("Despesas", f"R$ {data_resumo['Gastos']:,.2f}")
+          col_despesas.metric("Despesas", f"R$ {data_resumo['Gastos']:,.2f}", help=f"{total_despesas:,.2f} (Contas)")
           col_saldo.metric("Saldo em Conta", f"R$ {data_resumo['Saldo Conta']:,.2f}")
           col_total_investido.metric("Total Investido", f"R$ {data_resumo['Total Investido']:,.2f}")
           col_reserva.metric("Reserva Total Disponível", f"R$ {reserva_disponivel:,.2f}", f"{saldo_mes_disponivel:,.2f}")
