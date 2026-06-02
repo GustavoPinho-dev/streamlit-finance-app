@@ -165,16 +165,34 @@ if st.session_state["authentication_status"]:
         st.info("Nenhum investimento encontrado.")
 
     with tab_div:
-      if not df_aplicacoes.empty:
-        fig = px.pie(
-          df_aplicacoes,
-          names="Tipo",
-          values="Valor",
-          title="Distribuição dos Investimentos (somente aplicações)"
+      if not df_inv.empty:
+        df_dist = df_inv.copy()
+
+        df_dist["Valor Líquido"] = df_dist.apply(
+          lambda row: -row["Valor"] if row["Operação"] == "Retirada" else row["Valor"],
+          axis=1
         )
-        st.plotly_chart(fig)
+
+        df_dist = (
+          df_dist
+          .groupby("Tipo", as_index=False)["Valor Líquido"]
+          .sum()
+        )
+
+        df_dist = df_dist[df_dist["Valor Líquido"] > 0]
+
+        if not df_dist.empty:
+          fig = px.pie(
+            df_dist,
+            names="Tipo",
+            values="Valor Líquido",
+            title="Distribuição dos Investimentos considerando retiradas"
+          )
+          st.plotly_chart(fig)
+        else:
+          st.info("Nenhum saldo positivo de investimento encontrado para exibir no gráfico.")
       else:
-        st.info("Nenhuma aplicação encontrada para exibir no gráfico.")
+        st.info("Nenhum investimento encontrado para exibir no gráfico.")
 
 
   # ==============================
