@@ -4,6 +4,7 @@ import streamlit as st
 
 from data.extract import GoogleSheetsReadError
 from etl.transform import FinanceDataPipeline
+from services.dates import current_month_period, month_period_from_date
 
 
 ALOCACOES_PADRAO = [
@@ -18,7 +19,7 @@ def calcular_receita_planejamento(df_rendimentos: pd.DataFrame, mes_atual: pd.Pe
   if df_rendimentos.empty or "Data Fim" not in df_rendimentos.columns or "Rendimento" not in df_rendimentos.columns:
     return 0.0
 
-  mask_atual = pd.to_datetime(df_rendimentos["Data Fim"]).dt.to_period("M") == mes_atual
+  mask_atual = month_period_from_date(df_rendimentos["Data Fim"]) == mes_atual
   return float(df_rendimentos.loc[mask_atual, "Rendimento"].sum())
 
 
@@ -294,12 +295,12 @@ def _render_historico_planejamento(df_plan_salvo):
           st.info("Sem valores para exibir no gráfico.")
 
 
-def render_planejamento(df_rendimentos, df_plan_salvo, sheet_id, dados_key):
+def render_planejamento(df_rendimentos, df_plan_salvo, sheet_id, dados_key, today=None):
   """Renderiza a página de planejamento mensal."""
   st.header("📋 Planejamento Mensal")
   _inicializar_alocacoes()
 
-  mes_atual = pd.Period(pd.Timestamp.today(), "M")
+  mes_atual = current_month_period(today)
   mes_proximo = mes_atual + 1
 
   opcoes_mes = {

@@ -1,5 +1,6 @@
 import pandas as pd
 from data.extract import GoogleSheetsExtractor
+from services.dates import month_period_from_date, parse_date_br
 from services.utils import format_moeda_to_numeric
 from bot.services.logger import get_logger
 
@@ -24,16 +25,16 @@ class FinanceDataPipeline:
     if df.empty: return df
 
     df = format_moeda_to_numeric(df)
-    df["Data Inicio"] = pd.to_datetime(df["Data Inicio"], dayfirst=True).dt.date
-    df["Data Fim"] = pd.to_datetime(df["Data Fim"], dayfirst=True).dt.date
+    df["Data Inicio"] = parse_date_br(df["Data Inicio"])
+    df["Data Fim"] = parse_date_br(df["Data Fim"])
     return df
   
   def _transform_gastos(self, df: pd.DataFrame) -> pd.DataFrame:
     if df.empty: return df
 
     df = format_moeda_to_numeric(df)
-    df["Data"] = pd.to_datetime(df["Data"], dayfirst=True)
-    df["Mês"] = df["Data"].dt.to_period("M")
+    df["Data"] = parse_date_br(df["Data"])
+    df["Mês"] = month_period_from_date(df["Data"])
     return df
 
   def _transform_inv(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -42,7 +43,7 @@ class FinanceDataPipeline:
       df = df.rename(columns={"Tipo": "Operação"})
 
     df = format_moeda_to_numeric(df)
-    df["Vencimento"] = pd.to_datetime(df["Vencimento"], dayfirst=True, errors='coerce').dt.date
+    df["Vencimento"] = parse_date_br(df["Vencimento"])
 
     df["Tipo"] = df.apply(
       lambda r: f"{r['Produto']} - {r['Indicador']}"
