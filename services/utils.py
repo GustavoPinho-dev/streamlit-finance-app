@@ -1,8 +1,8 @@
 import pandas as pd
-from datetime import datetime
 import unicodedata
 import re
 from bot.services.logger import get_logger
+from services.dates import format_date_br
 
 
 logger = get_logger(__name__)
@@ -80,7 +80,9 @@ def format_moeda_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
   return df
 
 # Formata dados recebidos pelo bot para salvar na planilha
-def format_data_bot(data_bot: dict) -> list:
+def format_data_bot(data_bot: dict, today=None) -> list:
+  data_atual_br = format_date_br(today if today is not None else pd.Timestamp.today())
+
   # 1. Identifica o tipo de entrada
   tipo_entrada = data_bot.get('tipo', '')
   
@@ -94,7 +96,7 @@ def format_data_bot(data_bot: dict) -> list:
     tipo_exibicao = "Despesa" 
     
     data_to_save = [
-      datetime.now().strftime("%d/%m/%Y"), # Data
+      data_atual_br, # Data
       data_bot.get('descricao', ''),       # Descrição
       data_bot.get('categoria', 'Trabalho'),       # Categoria
       tipo_exibicao,                       # Tipo (Mapeado)
@@ -117,7 +119,7 @@ def format_data_bot(data_bot: dict) -> list:
     tipo_exibicao = "Receita" 
     
     data_to_save = [
-      datetime.now().strftime("%d/%m/%Y"), # Data
+      data_atual_br, # Data
       data_bot.get('descricao', ''),       # Descrição
       data_bot.get('categoria', ''),       # Categoria
       tipo_exibicao,                       # Tipo (Mapeado)
@@ -129,8 +131,8 @@ def format_data_bot(data_bot: dict) -> list:
     tipo_exibicao = "Rendimentos" 
     
     data_to_save = [
-      data_bot.get('data_inicio', datetime.now().strftime("%d/%m/%Y")),    # Data Início
-      data_bot.get('data_fim', datetime.now().strftime("%d/%m/%Y")),       # Descrição
+      data_bot.get('data_inicio', data_atual_br),    # Data Início
+      data_bot.get('data_fim', data_atual_br),       # Descrição
       f"R$ {valor_padronizado}",                      # Valor do rendimento
       data_bot.get('instituicao', '')      # Instituição
     ]

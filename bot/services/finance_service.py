@@ -1,10 +1,9 @@
-from datetime import datetime
-
 import pandas as pd
 
 from bot.services.logger import get_logger
 from data.extract import GoogleSheetsExtractor, GoogleSheetsReadError
 from etl.transform import FinanceDataPipeline
+from services.dates import current_month_period, month_period_from_date, parse_date_br
 from services.utils import get_data_resumo
 
 logger = get_logger(__name__)
@@ -27,13 +26,11 @@ class FinanceService:
       logger.exception('Erro ao salvar registro no Google Sheets para sheet_id=%s', self.sheet_id)
       return False
 
-  def consultar_resumo(self, instituicao: str):
+  def consultar_resumo(self, instituicao: str, today=None):
     df = self.get_df_gastos().copy()
-    df["Data"] = pd.to_datetime(df["Data"], dayfirst=True)
+    df["Data"] = parse_date_br(df["Data"])
 
-    filtro_mes_atual = (df["Data"].dt.month == datetime.now().month) & (
-      df["Data"].dt.year == datetime.now().year
-    )
+    filtro_mes_atual = month_period_from_date(df["Data"]) == current_month_period(today)
 
     return get_data_resumo(df[filtro_mes_atual], instituicao)
 

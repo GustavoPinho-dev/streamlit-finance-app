@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from services.dates import parse_date_br
 from services.utils import get_data_resumo, padronizar_string
 
 
@@ -36,12 +37,12 @@ def calcular_totais_gastos(df_filtro: pd.DataFrame, df_gastos: pd.DataFrame, ins
   }
 
 
-def filtrar_gastos_por_periodo(df_gastos: pd.DataFrame, mes_selecionado, tipo_filtro: str) -> pd.DataFrame:
+def filtrar_gastos_por_periodo(df_gastos: pd.DataFrame, mes_selecionado, tipo_filtro: str, today=None) -> pd.DataFrame:
   """Filtra gastos pelo mês e, opcionalmente, até a data atual."""
   df_filtro = df_gastos[df_gastos["Mês"] == mes_selecionado].copy()
 
   if tipo_filtro == "Até o dia atual":
-    hoje = pd.Timestamp.today().normalize()
+    hoje = parse_date_br(today if today is not None else pd.Timestamp.today())
     df_filtro = df_filtro[df_filtro["Data"] <= hoje]
 
   return df_filtro
