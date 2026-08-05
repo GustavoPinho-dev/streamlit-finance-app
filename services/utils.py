@@ -151,10 +151,11 @@ def get_data_resumo(df: pd.DataFrame, instituicao: str):
   total_receitas = df_instituicao[df_instituicao["Tipo"] == "Receita"]["Valor"].sum()
   total_despesas = df_instituicao[df_instituicao["Tipo"] == "Despesa"]["Valor"].sum()
   total_investido = df_instituicao[df_instituicao["Categoria"] == "Investimentos"]["Valor"].sum()
+  total_amortizado = df_instituicao[df_instituicao["Categoria"] == "Amortização"]["Valor"].sum()
   saldo_anterior = df_instituicao[df_instituicao["Tipo"] == "Saldo"]["Valor"].sum()
 
   saldo = saldo_anterior + (total_receitas - (total_despesas + total_investido))
-  saldo_mes = total_receitas - (total_despesas + total_investido)
+  saldo_mes = total_receitas - (total_despesas + total_investido + total_amortizado)
 
   return {
     "Receita Total": total_receitas, 
