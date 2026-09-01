@@ -2,7 +2,6 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from services.dates import parse_date_br
 from services.utils import get_data_resumo, padronizar_string
 
 
@@ -11,6 +10,7 @@ CATEGORIAS_CONTAS = ["Contas - Fixo", "Contas - Variável"]
 
 def calcular_totais_gastos(df_filtro: pd.DataFrame, df_gastos: pd.DataFrame, instituicao: str) -> dict:
   """Calcula os indicadores exibidos no resumo mensal de gastos."""
+
   data_resumo = get_data_resumo(df_filtro, instituicao)
   dados_acumulados = get_data_resumo(df_gastos, instituicao)
   reserva_disponivel = dados_acumulados["Receita Total"] - (
@@ -28,25 +28,19 @@ def calcular_totais_gastos(df_filtro: pd.DataFrame, df_gastos: pd.DataFrame, ins
     .sum()
   )
 
+  gastos_historicos = df_gastos[df_gastos["Categoria"].isin(CATEGORIAS_CONTAS)]
+  gastos_historicos = df_gastos.loc[df_gastos['Tipo'] == 'Despesa', ['Mês', 'Categoria', 'Valor']]
+
+  gastos_historicos = gastos_historicos.groupby(['Mês', 'Categoria'])['Valor'].sum().reset_index()
+
   return {
     "data_resumo": data_resumo,
     "reserva_disponivel": reserva_disponivel,
     "saldo_mes_disponivel": saldo_mes_disponivel,
     "total_despesas": total_despesas,
     "total_outros": total_outros,
+    "gastos_historicos": gastos_historicos
   }
-
-
-def filtrar_gastos_por_periodo(df_gastos: pd.DataFrame, mes_selecionado, tipo_filtro: str, today=None) -> pd.DataFrame:
-  """Filtra gastos pelo mês e, opcionalmente, até a data atual."""
-  df_filtro = df_gastos[df_gastos["Mês"] == mes_selecionado].copy()
-
-  if tipo_filtro == "Até o dia atual":
-    hoje = parse_date_br(today if today is not None else pd.Timestamp.today())
-    df_filtro = df_filtro[df_filtro["Data"] <= hoje]
-
-  return df_filtro
-
 
 def render_gastos(df_gastos):
   """Renderiza a página de gastos."""
@@ -67,14 +61,9 @@ def render_gastos(df_gastos):
       key="mes_gastos_global"
     )
 
-    tipo_filtro = st.radio(
-      "Período",
-      ["Mês inteiro", "Até o dia atual"],
-      key="tipo_filtro_global"
-    )
+  df_filtro = df_gastos[df_gastos["Mês"] == mes_selecionado].copy()
 
-  df_filtro = filtrar_gastos_por_periodo(df_gastos, mes_selecionado, tipo_filtro)
-  tab_resumo, tab_div = st.tabs(["Resumo Mensal", "Divisão"])
+  tab_resumo, tab_div, tab_historico = st.tabs(["Resumo Mensal", "Divisão", "Gastos Históricos"])
 
   with tab_resumo:
     for instituicao in instituicoes:
@@ -129,3 +118,18 @@ def render_gastos(df_gastos):
         "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY")
       }
     )
+
+  with tab_historico:
+    df_gastos_historicos = totais["gastos_historicos"]
+    df_gastos_historicos["Mês"] = df_gastos_historicos["Mês"].astype(str)
+
+    fig = px.bar(
+      df_gastos_historicos,
+      x="Mês",
+      y="Valor",
+      color="Categoria",
+      title="Total gasto em Despesas por mês",
+      barmode="stack"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)

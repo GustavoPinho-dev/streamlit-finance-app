@@ -1,7 +1,7 @@
 import pandas as pd
 
 from bot.services.logger import get_logger
-from data.extract import GoogleSheetsExtractor, GoogleSheetsReadError
+from data.extract import GoogleSheetsExtractor
 from etl.transform import FinanceDataPipeline
 from services.dates import current_month_period, month_period_from_date, parse_date_br
 from services.utils import get_data_resumo
