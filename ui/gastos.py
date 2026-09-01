@@ -131,4 +131,4 @@ def render_gastos(df_gastos):
       title="Total gasto em Despesas por mês"
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig)
