@@ -128,8 +128,7 @@ def render_gastos(df_gastos):
       x="Mês",
       y="Valor",
       color="Categoria",
-      title="Total gasto em Despesas por mês",
-      barmode="stack"
+      title="Total gasto em Despesas por mês"
     )
 
     st.plotly_chart(fig, use_container_width=True)
