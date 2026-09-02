@@ -120,16 +120,18 @@ def render_gastos(df_gastos):
     )
 
   with tab_historico:
-    df_gastos_historicos = totais["gastos_historicos"]
-    df_gastos_historicos["Mês"] = df_gastos_historicos["Mês"].astype(str)
+    df_gastos_historicos = totais["gastos_historicos"].copy()
 
-    fig = px.bar(
+    df_gastos_historicos["Mês"] = (
+      df_gastos_historicos["Mês"].astype(str)
+    )
+
+    st.header("Total gasto em Despesas por mês")
+
+    st.bar_chart(
       df_gastos_historicos,
       x="Mês",
       y="Valor",
       color="Categoria",
-      title="Total gasto em Despesas por mês",
-      barmode="stack"
+      stack=True
     )
-
-    st.plotly_chart(fig)
