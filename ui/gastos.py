@@ -123,7 +123,7 @@ def render_gastos(df_gastos):
     df_gastos_historicos = totais["gastos_historicos"].copy()
 
     df_gastos_historicos["Mês"] = (
-      df_gastos_historicos["Mês"].dt.strftime("%b %Y")
+      df_gastos_historicos["Mês"].astype(str)
     )
 
     st.header("Total gasto em Despesas por mês")
